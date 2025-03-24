@@ -926,7 +926,7 @@ _DEFAULT_CMAC_VALUES = {
         'attenuation_a_coef': 0.08,
         'c_coef': 0.3,
         'd_coef': 1.804,
-        'beta_coef': 0,  # ZDR corrections
+        'beta_coef': 0.64884,  # ZDR corrections
         'flip_phidp': True,
         'phidp_flipped': ['uncorrected_differential_phase','differential_phase'],
         'mbfs': cacti_csapr2_ppi_mbfs,

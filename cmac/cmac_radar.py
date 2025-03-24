@@ -159,7 +159,9 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
         radar.fields[
             'signal_to_noise_ratio'] = radar.fields.pop(
                 field_config['signal_to_noise_ratio'])
-        
+    # Temporary fix for BNF -- sometimes soundings do not report immediately
+    radar.fields["sounding_temperature"]["data"] = np.ma.where(radar.fields["sounding_temperature"]["data"] == -9999.,
+                                                           99., radar.fields["sounding_temperature"]["data"])
     radar.add_field('velocity_texture', texture, replace_existing=True)
     if verbose:
         print('##    sounding_temperature')

@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import pyart
+import cmweather
 
 from pyart.graph.common import (
     generate_radar_name, generate_radar_time_begin)
@@ -246,9 +247,9 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None):
     display = pyart.graph.RadarDisplay(radar)
     fig, ax = plt.subplots(1, 1, figsize=[12, 8])
     ax.set_aspect('auto')
-    display.plot_rhi('corrected_velocity', sweep=sweep,
-                     cmap=pyart.graph.cm.NWSVel, vmin=-30, ax=ax,
-                     vmax=30)
+    display.plot_rhi('corrected_velocity', sweep=sweep, 
+                     cmap='balance', vmin=-60, ax=ax,
+                     vmax=60)
     plt.ylim(ymin, ymax)
     fig.savefig(
         image_directory
