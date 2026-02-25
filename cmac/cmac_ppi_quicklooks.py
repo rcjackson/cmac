@@ -427,6 +427,42 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
         + '/rain_rate_A' + combined_name + '.png')
     plt.close(fig)
     del fig, ax, display
+    # Creating a plot of rain rate Z
+    display = pyart.graph.RadarMapDisplay(radar)
+    fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
+                          figsize=[12, 8])
+    ax.set_aspect('auto')
+    display.plot_ppi_map('rain_rate_Z', sweep=sweep, resolution='50m',
+                         vmin=0, vmax=120, min_lat=min_lat, min_lon=min_lon,
+                         max_lat=max_lat, ax=ax, max_lon=max_lon, lat_lines=lal,
+                         lon_lines=lol, projection=ccrs.PlateCarree())
+    if dd_lobes:
+        ax.contour(grid_lon, grid_lat, bca,
+                   levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                   colors='k')
+    fig.savefig(
+        image_directory
+        + '/rain_rate_Z' + combined_name + '.png')
+    plt.close(fig)
+    del fig, ax, display
+    # Creating a plot of rain rate A
+    display = pyart.graph.RadarMapDisplay(radar)
+    fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
+                          figsize=[12, 8])
+    ax.set_aspect('auto')
+    display.plot_ppi_map('rain_rate_Kdp', sweep=sweep, resolution='50m',
+                         vmin=0, vmax=120, min_lat=min_lat, min_lon=min_lon,
+                         max_lat=max_lat, ax=ax, max_lon=max_lon, lat_lines=lal,
+                         lon_lines=lol, projection=ccrs.PlateCarree())
+    if dd_lobes:
+        ax.contour(grid_lon, grid_lat, bca,
+                   levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                   colors='k')
+    fig.savefig(
+        image_directory
+        + '/rain_rate_Kdp' + combined_name + '.png')
+    plt.close(fig)
+    del fig, ax, display
 
     # Creating a plot of snowfall rate from Wolf and Snider
     if 'snow_rate_ws2012' in radar.fields.keys():

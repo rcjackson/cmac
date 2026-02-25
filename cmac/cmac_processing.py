@@ -16,6 +16,39 @@ from scipy import ndimage, interpolate
 import skfuzzy as fuzz
 import wradlib as wrl
 
+rain_rate_abbrevs = {'specific_attenuation': 'A',
+                     'corrected_specific_diff_phase': 'Kdp',
+                     'corrected_reflectivity': 'Z'}
+
+def rain_rate(radar, A, B, moment="specific_attenuation"):
+    """ 
+    Rain rate applied to a pyart Radar object.
+
+    Takes a given set of an A coefficient and a B exponent to a
+    rainfall rate estimator based off of the given moment. The rainfall rate will
+    then be calculated using R = A(Moment)^B.
+    """
+
+    if not moment in rain_rate_abbrevs.keys():
+        raise ValueError(f"Invalid moment: {moment}")
+    else:
+        abbrev = rain_rate_abbrevs[moment]
+    
+    mom = radar.fields[moment]["data"]
+    if moment == "corrected_reflectivity":
+        mom = 10**(mom / 10.)
+    rr = A * mom ** B
+    print(moment)
+    radar.add_field_like(moment, f'rain_rate_{abbrev}', rr, replace_existing=True)
+    radar.fields[f'rain_rate_{abbrev}']['units'] = 'mm/h'
+    radar.fields[f'rain_rate_{abbrev}']['standard_name'] = 'rainfall_rate'
+    radar.fields[f'rain_rate_{abbrev}']['long_name'] = f'Rainfall rate estimated from {abbrev}'
+    radar.fields[f'rain_rate_{abbrev}']['valid_min'] = 0
+    radar.fields[f'rain_rate_{abbrev}']['valid_max'] = 400
+    radar.fields[f'rain_rate_{abbrev}']['A_coefficient'] = A
+    radar.fields[f'rain_rate_{abbrev}']['B_exponent'] = B
+    return radar
+    
 
 def snow_rate(radar, swe_ratio, A, B, citation='Wolf and Snider 2012', abbrev='ws2012'):
     """
@@ -282,7 +315,8 @@ def get_melt(radar, melt_cat=None):
         melt_cat = cat_dict['melting']
 
     melt_locations = np.where(radar.fields['gate_id']['data'] == melt_cat)
-    kinda_cold = np.where(radar.fields['sounding_temperature']['data'] < 0)
+    kinda_cold = np.ma.where(np.logical_and(
+        radar.fields['sounding_temperature']['data'] > -30, radar.fields['sounding_temperature']['data'] < 0))
     fzl_sounding = radar.gate_altitude['data'][kinda_cold].min()
     if len(melt_locations[0] > 1):
         fzl_pid = radar.gate_altitude['data'][melt_locations].min()
@@ -303,8 +337,6 @@ def fix_phase_fields(orig_kdp, orig_phidp, rrange, happy_kdp,
     orig_kdp['data'][happy_kdp.gate_excluded] = 0.0
     orig_kdp['data'][orig_kdp['data'] > max_kdp] = max_kdp
     interg = integrate.cumtrapz(orig_kdp['data'], rrange, axis=1)
-    print(interg.shape)
-    print(orig_phidp['data'].shape)
     orig_phidp['data'][:, 0:-1] = interg/len(rrange)
     return orig_phidp, orig_kdp
 

@@ -565,7 +565,7 @@ _DEFAULT_FIELD_NAMES = {
         # Input field names to attenuation code
         'zdr_field': 'corrected_differential_reflectivity',
         'pia_field': 'path_integrated_attenuation',
-        'phidp_field': 'filtered_corrected_differential_phase',  # output phidp, need to change
+        'phidp_field': 'corrected_differential_phase',  # output phidp, need to change
         'refl_field': 'corrected_reflectivity'},  # output Z field
 
     # CACTI C-SAPR 2 field names.
@@ -678,10 +678,43 @@ cacti_csapr2_ppi_mbfs={'multi_trip': {'velocity_texture': [[7.7, 10.0, 130.0, 13
                             'sounding_temperature': [[0, 0.1, 2, 4], 4.0],
                             'signal_to_noise_ratio': [[20, 22, 1000, 1000], 0.0]}}
 
+# csapr2_bnf
+bnf_csapr2_ppi_mbfs={'multi_trip': {'velocity_texture': [[7.7, 10.0, 130.0, 130.0], 4.0],
+                                 'copol_correlation_coeff': [[0.7, 0.8, 1, 1], 0.0],
+                                 'normalized_coherent_power': [[0, 0, 0.3, 0.35], 1.0],
+                                 'height': [[0, 0, 5000, 8000], 0.0],
+                                 'sounding_temperature': [[-100, -100, 100, 100], 0.0],
+                                 'signal_to_noise_ratio': [[-2, 2, 1000, 1000], 1.0]},
+                  'rain': {'velocity_texture': [[0, 0, 2.0, 2.1], 0.0],
+                           'copol_correlation_coeff': [[0.97, 0.98, 1, 1], 2.0],
+                           'normalized_coherent_power': [[0.4, 0.5, 1, 1], 0.0],
+                           'height': [[0, 0, 5000, 6000], 0.0],
+                           'sounding_temperature': [[2.0, 5.0, 100, 100], 2.0],
+                           'signal_to_noise_ratio': [[-2, 2, 1000, 1000], 1.0]},
+                  'snow': {'velocity_texture': [[0, 0, 2.0, 2.1], 1.0],
+                           'copol_correlation_coeff': [[0.85, 0.9, 1, 1], 1.0],
+                           'normalized_coherent_power': [[0.4, 0.5, 1, 1], 1.0],
+                           'height': [[0, 0, 25000, 25000], 0.0],
+                           'sounding_temperature': [[-100, -100, 0.5, 4.0], 2.0],
+                           'signal_to_noise_ratio': [[-2, 2, 1000, 1000], 1.0]},
+                  'no_scatter': {'velocity_texture': [[0, 0, 330.0, 330.0], 2.0],
+                                 'copol_correlation_coeff': [[0, 0, 0.1, 0.2], 0.0],
+                                 'normalized_coherent_power': [[0, 0, 0.1, 0.2], 0.0],
+                                 'height': [[0, 0, 25000, 25000], 0.0],
+                                 'sounding_temperature': [[-100, -100, 100, 100], 0.0],
+                                 'signal_to_noise_ratio': [[-100, -100, -2, 0], 4.0]},
+                'melting': {'velocity_texture': [[0, 0, 2.0, 2.1], 0.0],
+                            'copol_correlation_coeff': [[0.6, 0.65, 0.95, 0.96], 4.0],
+                            'normalized_coherent_power': [[0.4, 0.5, 1, 1], 0],
+                            'height': [[0, 0, 25000, 25000], 0.0],
+                            'sounding_temperature': [[-1, -0.5, 3, 4], 4.0],
+                            'signal_to_noise_ratio': [[-2, 2, 1000, 1000], 0.0]}}
+
 cacti_csapr2_ppi_hard_const = [['melting', 'sounding_temperature', (10, 100)],
                                ['multi_trip', 'height', (10000, 1000000)],
                                ['melting', 'sounding_temperature', (-10000, -2)],
                                ['rain', 'sounding_temperature', (-1000, -5)],
+                               ['snow', 'sounding_temperature', (3, 100)],
                                ['melting', 'velocity_texture', (3, 300)]]
 
 # NSA X-SAPR Fuzzy Values.
@@ -758,8 +791,12 @@ _DEFAULT_CMAC_VALUES = {
         'd_coef': 1,
         'beta_coef': 1,
         'zdr_offset': 3.05,
-        'rain_rate_a_coef': 43.5,
-        'rain_rate_b_coef': 0.79},
+        'rain_rate_a_coef_A': 43.5,
+        'rain_rate_b_coef_A': 0.79,
+        'rain_rate_a_coef_Z': 0.029,
+        'rain_rate_b_coef_Z': 0.67,
+        'rain_rate_a_coef_Kdp': 16.9,
+        'rain_rate_b_coef_Kdp': 0.801,},
 
     # X-SAPR I5 PPI CMAC 2.0 processing values.
     'xsapr_i5_cfr_ppi': {
@@ -770,8 +807,12 @@ _DEFAULT_CMAC_VALUES = {
         'ref_offset': 0.0,
         'self_const': 60000.00,
         'attenuation_a_coef': 0.17,
-        'rain_rate_a_coef': 43.5,
-        'rain_rate_b_coef': 0.79},
+        'rain_rate_a_coef_A': 43.5,
+        'rain_rate_b_coef_A': 0.79,
+        'rain_rate_a_coef_Z': 0.029,
+        'rain_rate_b_coef_Z': 0.67,
+        'rain_rate_a_coef_Kdp': 16.9,
+        'rain_rate_b_coef_Kdp': 0.801,},
 
     # X-SAPR I4 PPI CMAC 2.0 processing values.
     'xsapr_i4_ppi': {
@@ -786,8 +827,12 @@ _DEFAULT_CMAC_VALUES = {
         'd_coef': 1,
         'beta_coef': 1,
         'zdr_offset': 3.05,
-        'rain_rate_a_coef': 43.5,
-        'rain_rate_b_coef': 0.79},
+        'rain_rate_a_coef_A': 43.5,
+        'rain_rate_b_coef_A': 0.79,
+        'rain_rate_a_coef_Z': 0.029,
+        'rain_rate_b_coef_Z': 0.67,
+        'rain_rate_a_coef_Kdp': 16.9,
+        'rain_rate_b_coef_Kdp': 0.801,},
 
     # X-SAPR I6 Sector CMAC 2.0 processing values.
     'xsapr_i6_sec': {
@@ -802,8 +847,12 @@ _DEFAULT_CMAC_VALUES = {
         'd_coef': 1,
         'beta_coef': 1,
         'zdr_offset': 3.05,
-        'rain_rate_a_coef': 43.5,
-        'rain_rate_b_coef': 0.79},
+        'rain_rate_a_coef_A': 43.5,
+        'rain_rate_b_coef_A': 0.79,
+        'rain_rate_a_coef_Z': 0.029,
+        'rain_rate_b_coef_Z': 0.67,
+        'rain_rate_a_coef_Kdp': 16.9,
+        'rain_rate_b_coef_Kdp': 0.801,},
 
     # X-SAPR I5 Sector CMAC 2.0 processing values.
     'xsapr_i5_sec': {
@@ -818,8 +867,12 @@ _DEFAULT_CMAC_VALUES = {
         'd_coef': 1,
         'beta_coef': 1,
         'zdr_offset': 3.05,
-        'rain_rate_a_coef': 43.5,
-        'rain_rate_b_coef': 0.79},
+        'rain_rate_a_coef_A': 43.5,
+        'rain_rate_b_coef_A': 0.79,
+        'rain_rate_a_coef_Z': 0.029,
+        'rain_rate_b_coef_Z': 0.67,
+        'rain_rate_a_coef_Kdp': 16.9,
+        'rain_rate_b_coef_Kdp': 0.801,},
 
     # X-SAPR I5 Sector CMAC 2.0 processing values.
     'xsapr_i5_ppi': {
@@ -834,8 +887,12 @@ _DEFAULT_CMAC_VALUES = {
         'd_coef': 1,
         'beta_coef': 1,
         'zdr_offset': 3.05,
-        'rain_rate_a_coef': 43.5,
-        'rain_rate_b_coef': 0.79},
+        'rain_rate_a_coef_A': 43.5,
+        'rain_rate_b_coef_A': 0.79,
+        'rain_rate_a_coef_Z': 0.029,
+        'rain_rate_b_coef_Z': 0.67,
+        'rain_rate_a_coef_Kdp': 16.9,
+        'rain_rate_b_coef_Kdp': 0.801,},
     
     # X-SAPR I5 RHI CMAC 2.0 processing values.
     'xsapr_i5_rhi': {
@@ -850,8 +907,12 @@ _DEFAULT_CMAC_VALUES = {
         'd_coef': 1,
         'beta_coef': 1,
         'zdr_offset': 3.05,
-        'rain_rate_a_coef': 43.5,
-        'rain_rate_b_coef': 0.79},
+        'rain_rate_a_coef_A': 43.5,
+        'rain_rate_b_coef_A': 0.79,
+        'rain_rate_a_coef_Z': 0.029,
+        'rain_rate_b_coef_Z': 0.67,
+        'rain_rate_a_coef_Kdp': 16.9,
+        'rain_rate_b_coef_Kdp': 0.801,},
 
     # X-SAPR I4 Sector CMAC 2.0 processing values.
     'xsapr_i4_sec': {
@@ -866,8 +927,12 @@ _DEFAULT_CMAC_VALUES = {
         'd_coef': 1,
         'beta_coef': 1,
         'zdr_offset': 3.05,
-        'rain_rate_a_coef': 43.5,
-        'rain_rate_b_coef': 0.79},
+        'rain_rate_a_coef_A': 43.5,
+        'rain_rate_b_coef_A': 0.79,
+        'rain_rate_a_coef_Z': 0.029,
+        'rain_rate_b_coef_Z': 0.67,
+        'rain_rate_a_coef_Kdp': 16.9,
+        'rain_rate_b_coef_Kdp': 0.801,},
 
     # CACTI C-SAPR 2 CMAC 2.0 processing values.
     'cacti_csapr2_ppi': {
@@ -888,8 +953,14 @@ _DEFAULT_CMAC_VALUES = {
         'gen_clutter_from_refl_diff': -0.2,
         'gen_clutter_from_refl_alt': 2000.0,
         'clutter_mask_z_for_texture': True,
-        'rain_rate_a_coef': 294.0,
-        'rain_rate_b_coef': 0.89,
+        'rain_rate_a_coef_A': 294.0,
+        'rain_rate_b_coef_A': 0.89,
+        'rain_rate_a_coef_A': 294.0,
+        'rain_rate_b_coef_A': 0.89,
+        'rain_rate_a_coef_Z': 0.017,
+        'rain_rate_b_coef_Z': 0.714,
+        'rain_rate_a_coef_Kdp': 25.1,
+        'rain_rate_b_coef_Kdp': 0.777,
         'beam_width': 1.0,
         'radar_height_offset': 10.0,},  # We expect clutter corrected fields now
     
@@ -912,8 +983,12 @@ _DEFAULT_CMAC_VALUES = {
         'gen_clutter_from_refl_diff': -0.2,
         'gen_clutter_from_refl_alt': 2000.0,
         'clutter_mask_z_for_texture': True,
-        'rain_rate_a_coef': 294.0,
-        'rain_rate_b_coef': 0.89,
+        'rain_rate_a_coef_A': 294.0,
+        'rain_rate_b_coef_A': 0.89,
+        'rain_rate_a_coef_Z': 0.017,
+        'rain_rate_b_coef_Z': 0.714,
+        'rain_rate_a_coef_Kdp': 25.1,
+        'rain_rate_b_coef_Kdp': 0.777,
         'beam_width': 1.0,
         'radar_height_offset': 10.0,},  # We expect clutter corrected fields now
 
@@ -923,22 +998,26 @@ _DEFAULT_CMAC_VALUES = {
         'sonde_name': 'bnfsondewnpnM1.b1',
         'site_alt': 12,
         'self_const': 60000.00,
-        'attenuation_a_coef': 0.08,
+        'attenuation_a_coef': 0.0633,
         'c_coef': 0.3,
-        'd_coef': 1.804,
+        'd_coef': 1.0804,
         'beta_coef': 0.64884,  # ZDR corrections
-        'flip_phidp': True,
+        'flip_phidp': False,
         'phidp_flipped': ['uncorrected_differential_phase','differential_phase'],
-        'mbfs': cacti_csapr2_ppi_mbfs,
+        'mbfs': bnf_csapr2_ppi_mbfs,
         'hard_const': cacti_csapr2_ppi_hard_const,
-        'gen_clutter_from_refl': True,
+        'gen_clutter_from_refl': False,
         'ref_offset': 0.8,
         'zdr_offset': 0.7,
         'gen_clutter_from_refl_diff': -0.2,
         'gen_clutter_from_refl_alt': 2000.0,
-        'clutter_mask_z_for_texture': True,
-        'rain_rate_a_coef': 294.0,
-        'rain_rate_b_coef': 0.89,
+        'clutter_mask_z_for_texture': False,
+        'rain_rate_a_coef_A': 294.0,
+        'rain_rate_b_coef_A': 0.89,
+        'rain_rate_a_coef_Z': 0.017,
+        'rain_rate_b_coef_Z': 0.714,
+        'rain_rate_a_coef_Kdp': 25.1,
+        'rain_rate_b_coef_Kdp': 0.777,
         'kdp_method': "bringi",
         'beam_width': 1.0,
         'radar_height_offset': 10.0,},  # We expect clutter corrected fields now
@@ -962,8 +1041,12 @@ _DEFAULT_CMAC_VALUES = {
         'gen_clutter_from_refl_diff': -0.2,
         'gen_clutter_from_refl_alt': 2000.0,
         'clutter_mask_z_for_texture': True,
-        'rain_rate_a_coef': 43.5,
-        'rain_rate_b_coef': 0.79,
+        'rain_rate_a_coef_A': 43.5,
+        'rain_rate_b_coef_A': 0.79,
+        'rain_rate_a_coef_Z': 0.029,
+        'rain_rate_b_coef_Z': 0.67,
+        'rain_rate_a_coef_Kdp': 16.9,
+        'rain_rate_b_coef_Kdp': 0.801,
         'beam_width': 1.0,
         'radar_height_offset': 10.0,},
     
@@ -980,8 +1063,12 @@ _DEFAULT_CMAC_VALUES = {
         'd_coef': 1,
         'beta_coef': 1,
         'zdr_offset': 0.5,
-        'rain_rate_a_coef': 43.5,
-        'rain_rate_b_coef': 0.79},
+        'rain_rate_a_coef_A': 43.5,
+        'rain_rate_b_coef_A': 0.79,
+        'rain_rate_a_coef_Z': 0.029,
+        'rain_rate_b_coef_Z': 0.67,
+        'rain_rate_a_coef_Kdp': 16.9,
+        'rain_rate_b_coef_Kdp': 0.801},
 
 }
 
