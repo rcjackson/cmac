@@ -13,10 +13,9 @@ import netCDF4
 
 from .cmac_processing import (
     do_my_fuzz, get_melt, get_texture, fix_phase_fields, gen_clutter_field_from_refl, beam_block,
-    snow_rate)
+    snow_rate, rain_rate)
 from .config import get_cmac_values, get_field_names, get_metadata, get_zs_relationships
 from csu_radartools import csu_kdp
-
 
 def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
          meta_append=None, verbose=True, snow_density=0.073, snowfall=True):
@@ -151,15 +150,17 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
         print('## These radar fields are being added:')
     temp_dict['units'] = 'degC'
     z_dict['units'] = 'm'
+    temp_dict["data"] = temp_dict["data"].filled(-9999)
     radar.add_field('sounding_temperature', temp_dict, replace_existing=True)
     radar.add_field('height', z_dict, replace_existing=True)
+    
+
     if field_config['signal_to_noise_ratio'] is None:
         radar.add_field('signal_to_noise_ratio', snr, replace_existing=True)
     else:
         radar.fields[
             'signal_to_noise_ratio'] = radar.fields.pop(
                 field_config['signal_to_noise_ratio'])
-        
     radar.add_field('velocity_texture', texture, replace_existing=True)
     if verbose:
         print('##    sounding_temperature')
@@ -253,7 +254,7 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
     cmac_gates.include_equal('gate_id', cat_dict['rain'])
     cmac_gates.include_equal('gate_id', cat_dict['melting'])
     cmac_gates.include_equal('gate_id', cat_dict['snow'])
-
+    
     # Create a simulated velocity field from the sonde object.
     u_field = field_config['u_wind']
     v_field = field_config['v_wind']
@@ -269,9 +270,14 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
     # Create the corrected velocity field from the region dealias algorithm.
     speckled_cmac_gates = pyart.correct.despeckle_field(
         radar, vel_field, gatefilter=cmac_gates)
-    corr_vel = pyart.correct.dealias_region_based(
-        radar, vel_field=vel_field, ref_vel_field='simulated_velocity',
-        keep_original=False, gatefilter=speckled_cmac_gates, centered=True)
+    if radar.scan_type == "rhi":
+        corr_vel = pyart.correct.dealias_region_based(
+            radar, vel_field=vel_field,
+            keep_original=False, gatefilter=speckled_cmac_gates, centered=True)
+    else:
+        corr_vel = pyart.correct.dealias_region_based(
+            radar, vel_field=vel_field, ref_vel_field='simulated_velocity',
+            keep_original=False, gatefilter=speckled_cmac_gates, centered=True)
 
     radar.add_field('corrected_velocity', corr_vel, replace_existing=True)
     if verbose:
@@ -300,17 +306,18 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
             phidp_field=field_config['input_phidp_field'],
             refl_field=field_config['reflectivity'])
     elif cmac_config['kdp_method'] == 'bringi':
-        fill_value = radar.fields[field_config['input_phidp_field']]['data'].fill_value
+        fill_value = -9999.
         dp = radar.fields[field_config['input_phidp_field']]['data']
-        dz = radar.fields[field_config['reflectivity']]['data']
+        dz = radar.fields[field_config['reflectivity']]['data'] 
         dp = dp.filled(fill_value)
         dz = dz.filled(fill_value)
         rng = np.tile(radar.range['data'], (radar.nrays, 1)) / 1e3
         kdp, phidp, _ = csu_kdp.calc_kdp_bringi(dp=dp, dz=dz, rng=rng,
             bad=fill_value)
-        
-        kdp_data = np.ma.masked_where(kdp_gates.gate_excluded, kdp)
-        phidp_data = np.ma.masked_where(kdp_gates.gate_excluded, phidp)
+            
+        kdp_data = np.ma.masked_where(
+                kdp_gates.gate_excluded, kdp).filled(-9999.)
+        phidp_data = np.ma.masked_where(kdp_gates.gate_excluded, phidp).filled(-9999.)
         phidp = copy.deepcopy(radar.fields[field_config['input_phidp_field']])
         kdp = pyart.config.get_metadata("corrected_specific_differential_phase")
         phidp["data"] = phidp_data
@@ -321,20 +328,22 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
     # We do not use KDP, phase above freezing level
     kdp_gates = copy.deepcopy(cmac_gates)
     kdp_gates.exclude_above('height', fzl)
-    phidp_filt, kdp_filt = fix_phase_fields(
-        copy.deepcopy(kdp), copy.deepcopy(phidp), radar.range['data'],
-        cmac_gates)
-
+    
     radar.add_field('corrected_differential_phase', phidp,
+                    replace_existing=True)
+    radar.add_field('corrected_specific_diff_phase', kdp,
                     replace_existing=True)
     radar.fields[
         'corrected_differential_phase']['long_name'] = 'Corrected differential propagation phase shift'
-    radar.add_field('filtered_corrected_differential_phase', phidp_filt,
+   
+    phidp_filt, kdp_filt = fix_phase_fields(
+        copy.deepcopy(kdp), copy.deepcopy(phidp), radar.range['data'],
+        kdp_gates)
+    
+    radar.add_field('filtered_corrected_differential_phase', phidp,
                     replace_existing=True)
     radar.fields[
         'filtered_corrected_differential_phase']['long_name'] = 'Filtered corrected differential propagation phase shift'
-    radar.add_field('corrected_specific_diff_phase', kdp,
-                    replace_existing=True)
     radar.add_field('filtered_corrected_specific_diff_phase', kdp_filt,
                     replace_existing=True)
     radar.fields[
@@ -352,8 +361,6 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
     c_coef = cmac_config['c_coef']
     d_coef = cmac_config['d_coef']
     beta_coef = cmac_config['beta_coef']
-    rr_a = cmac_config['rain_rate_a_coef']
-    rr_b = cmac_config['rain_rate_b_coef']
     zdr_field = field_config['differential_reflectivity']
 
     radar.fields['corrected_differential_reflectivity'] = copy.deepcopy(
@@ -365,26 +372,36 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
         radar.fields['corrected_reflectivity']['data'])
 
     # Get specific differential attenuation.
-    # Need height over 0C isobar.
+    # Need height over 0 degree isotherm
     iso0 = np.ma.mean(radar.fields['height']['data'][
-        np.where(np.abs(radar.fields['sounding_temperature']['data']) < 0.1)])
+        np.ma.where(np.abs(radar.fields['sounding_temperature']['data']) < 0.5)])
     radar.fields['height_over_iso0'] = copy.deepcopy(radar.fields['height'])
     radar.fields['height_over_iso0']['data'] -= iso0
     radar.fields['height_over_iso0']['long_name'] = 'Height of radar beam over freezing level'
     phidp_field = field_config['phidp_field']
-    
+    phase_proc_gates = pyart.filters.GateFilter(radar)
+    phase_proc_gates.exclude_all()
+    phase_proc_gates.include_equal('gate_id', 1)
+    phase_proc_gates.include_equal('gate_id', 2)
+    phase_proc_gates.exclude_above('corrected_specific_diff_phase', 10.0)
+    phase_proc_gates = pyart.correct.despeckle_field(radar, 'differential_phase',
+            gatefilter=phase_proc_gates, size=49)
+    radar.fields['sounding_temperature_filled'] = copy.deepcopy(radar.fields['sounding_temperature'])
+    radar.fields['sounding_temperature_filled']['data'] = np.where(
+            radar.fields['sounding_temperature_filled']['data'] > -100.,
+            radar.fields['sounding_temperature_filled']['data'], 9999.)
     (spec_at, pia_dict, cor_z, spec_diff_at,
      pida_dict, cor_zdr) = pyart.correct.calculate_attenuation_zphi(
-         radar, temp_field='sounding_temperature',
-         iso0_field='height_over_iso0',
+         radar, temp_field='sounding_temperature_filled',
          zdr_field=field_config['zdr_field'],
          pia_field=field_config['pia_field'],
+         iso0_field='height_over_iso0',
          phidp_field=field_config['phidp_field'],
          refl_field=field_config['refl_field'], c=c_coef, d=d_coef,
          a_coef=attenuation_a_coef, beta=beta_coef,
-         gatefilter=cmac_gates)
-
+         gatefilter=phase_proc_gates)
     #  cor_zdr['data'] += cmac_config['zdr_offset'] Now taken care of at start
+    del radar.fields['sounding_temperature_filled']
     radar.add_field('specific_attenuation', spec_at, replace_existing=True)
     radar.add_field('path_integrated_attenuation', pia_dict,
                     replace_existing=True)
@@ -395,7 +412,7 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
                     replace_existing=True)
     radar.add_field('corrected_differential_reflectivity', cor_zdr,
                     replace_existing=True)
-
+    
     radar.fields['corrected_velocity']['units'] = 'm/s'
     if 'valid_min' not in radar.fields['corrected_velocity'].keys():
         radar.fields['corrected_velocity']['valid_min'] = -100.0
@@ -420,28 +437,19 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
     rain_gates = pyart.correct.GateFilter(radar)
     rain_gates.exclude_all()
     rain_gates.include_equal('gate_id', cat_dict['rain'])
-    
-    # Calculating rain rate.
-    R = rr_a * (radar.fields['specific_attenuation']['data']) ** rr_b
-    rainrate = copy.deepcopy(radar.fields['specific_attenuation'])
-    rainrate['data'] = R
-    rainrate['valid_min'] = 0.0
-    rainrate['valid_max'] = 400.0
-    rainrate['standard_name'] = 'rainfall_rate'
-    rainrate['long_name'] = 'rainfall_rate'
-    rainrate['least_significant_digit'] = 1
-    rainrate['units'] = 'mm/hr'
-    radar.fields.update({'rain_rate_A': rainrate})
-
+    print("Rainfall rate A")
+    rr_a = cmac_config['rain_rate_a_coef_A']
+    rr_b = cmac_config['rain_rate_b_coef_A']
+    radar = rain_rate(radar, rr_a, rr_b, moment="specific_attenuation")
+    print("Rainfall Rate KDP")
+    rr_a = cmac_config['rain_rate_a_coef_Kdp']
+    rr_b = cmac_config['rain_rate_b_coef_Kdp']
+    radar = rain_rate(radar, rr_a, rr_b, moment="corrected_specific_diff_phase")
+    print("Rainfall rate Z")
+    rr_a = cmac_config['rain_rate_a_coef_Z']
+    rr_b = cmac_config['rain_rate_b_coef_Z']
+    radar = rain_rate(radar, rr_a, rr_b, moment="corrected_reflectivity")
     mask = cmac_gates.gate_excluded
-
-    rain_rate_comment = (
-        'Rain rate calculated from specific_attenuation,'
-        + ' R=%s*specific_attenuation**%s, note R=0.0 where' % (
-            str(rr_a), str(rr_b))
-        + ' norm coherent power < 0.4 or rhohv < 0.8')
-    radar.fields['rain_rate_A'].update({
-        'comment': rain_rate_comment})
 
     if snowfall == True:
         snow_gates = pyart.correct.GateFilter(radar)

@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import pyart
+import cmweather
 
 from pyart.graph.common import (
     generate_radar_name, generate_radar_time_begin)
@@ -394,8 +395,8 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                           figsize=[12, 8])
     ax.set_aspect('auto')
     display.plot_ppi_map('corrected_velocity', sweep=sweep, resolution='50m',
-                         cmap=pyart.graph.cm.NWSVel, vmin=-30, ax=ax,
-                         vmax=30, min_lat=min_lat, min_lon=min_lon,
+                         cmap='balance', vmin=-60, ax=ax,
+                         vmax=60, min_lat=min_lat, min_lon=min_lon,
                          max_lat=max_lat, max_lon=max_lon, lat_lines=lal,
                          lon_lines=lol, projection=ccrs.PlateCarree())
     if dd_lobes:
@@ -424,6 +425,42 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     fig.savefig(
         image_directory
         + '/rain_rate_A' + combined_name + '.png')
+    plt.close(fig)
+    del fig, ax, display
+    # Creating a plot of rain rate Z
+    display = pyart.graph.RadarMapDisplay(radar)
+    fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
+                          figsize=[12, 8])
+    ax.set_aspect('auto')
+    display.plot_ppi_map('rain_rate_Z', sweep=sweep, resolution='50m',
+                         vmin=0, vmax=120, min_lat=min_lat, min_lon=min_lon,
+                         max_lat=max_lat, ax=ax, max_lon=max_lon, lat_lines=lal,
+                         lon_lines=lol, projection=ccrs.PlateCarree())
+    if dd_lobes:
+        ax.contour(grid_lon, grid_lat, bca,
+                   levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                   colors='k')
+    fig.savefig(
+        image_directory
+        + '/rain_rate_Z' + combined_name + '.png')
+    plt.close(fig)
+    del fig, ax, display
+    # Creating a plot of rain rate A
+    display = pyart.graph.RadarMapDisplay(radar)
+    fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
+                          figsize=[12, 8])
+    ax.set_aspect('auto')
+    display.plot_ppi_map('rain_rate_Kdp', sweep=sweep, resolution='50m',
+                         vmin=0, vmax=120, min_lat=min_lat, min_lon=min_lon,
+                         max_lat=max_lat, ax=ax, max_lon=max_lon, lat_lines=lal,
+                         lon_lines=lol, projection=ccrs.PlateCarree())
+    if dd_lobes:
+        ax.contour(grid_lon, grid_lat, bca,
+                   levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                   colors='k')
+    fig.savefig(
+        image_directory
+        + '/rain_rate_Kdp' + combined_name + '.png')
     plt.close(fig)
     del fig, ax, display
 
@@ -458,7 +495,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                              sweep),
                          resolution='50m', min_lat=min_lat, ax=ax,
                          min_lon=min_lon, max_lat=max_lat, max_lon=max_lon,
-                         lat_lines=lal, lon_lines=lol,
+                         lat_lines=lal, lon_lines=lol, vmin=0, vmax=360,
                          cmap=pyart.graph.cm.Theodore16,
                          projection=ccrs.PlateCarree())
     if dd_lobes:
@@ -482,7 +519,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                              sweep), ax=ax,
                          resolution='50m', min_lat=min_lat,
                          min_lon=min_lon, max_lat=max_lat, max_lon=max_lon,
-                         lat_lines=lal, lon_lines=lol,
+                         lat_lines=lal, lon_lines=lol, vmin=-2, vmax=10,
                          cmap=pyart.graph.cm.Theodore16,
                          projection=ccrs.PlateCarree())
     if dd_lobes:
