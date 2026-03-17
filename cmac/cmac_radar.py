@@ -159,8 +159,8 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
         radar.add_field('signal_to_noise_ratio', snr, replace_existing=True)
     else:
         radar.fields[
-            'signal_to_noise_ratio'] = radar.fields.pop(
-                field_config['signal_to_noise_ratio'])
+            'signal_to_noise_ratio'] = radar.fields[
+                field_config['signal_to_noise_ratio']].copy()
     radar.add_field('velocity_texture', texture, replace_existing=True)
     if verbose:
         print('##    sounding_temperature')
