@@ -8,7 +8,7 @@ def test_get_cmac_values():
     cmac_config = get_cmac_values('xsapr_i5_ppi')
     assert type(cmac_config) == dict
 
-    assert cmac_config['save_name'] == 'sgpxsaprcmacsurI5.c1'
+    assert cmac_config['save_name'] == 'sgpxsaprcmacsecI5.c1'
     assert cmac_config['site_alt'] == 328
     assert cmac_config['ref_offset'] == 0.0
     assert cmac_config['self_const'] == 60000.00
