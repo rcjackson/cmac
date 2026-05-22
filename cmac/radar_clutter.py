@@ -18,11 +18,11 @@ except ImportError:
     pass
 
 
-def tall_clutter(files, config, 
+def tall_clutter(files, config,
                  clutter_thresh_min=0.0002,
                  clutter_thresh_max=0.25, radius=1,
                  max_height=2000., write_radar=True,
-                 out_file=None, use_dask=False):
+                 out_file=None, use_dask=False, config_file=None):
     """
     Wind Farm Clutter Calculation
 
@@ -58,6 +58,9 @@ def tall_clutter(files, config,
     use_dask : bool
         Use dask instead of running stats for calculation. The will reduce
         run time.
+    config_file : str or None
+        Path to a YAML file whose values override the built-in defaults for
+        the named ``config`` radar.
 
     Returns
     -------
@@ -67,7 +70,7 @@ def tall_clutter(files, config,
         other radar specifications.
 
     """
-    field_names = get_field_names(config)
+    field_names = get_field_names(config, config_file=config_file)
     refl_field = field_names["reflectivity"]
     vel_field = field_names["velocity"]
     ncp_field = field_names["normalized_coherent_power"]

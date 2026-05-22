@@ -18,7 +18,8 @@ from .config import get_cmac_values, get_field_names, get_metadata, get_zs_relat
 from csu_radartools import csu_kdp
 
 def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
-         meta_append=None, verbose=True, snow_density=0.073, snowfall=True):
+         meta_append=None, verbose=True, snow_density=0.073, snowfall=True,
+         config_file=None):
     """
     Corrected Moments in Antenna Coordinates
 
@@ -45,6 +46,10 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
         If True, this will display more statistics.
     snow_density : float
         1 / Snow water equivalent ratio for snowfall rate
+    config_file : str or None
+        Path to a YAML file whose values override the built-in defaults for
+        the named ``config`` radar. See ``cmac.config`` for the expected
+        layout. When None, only the built-in defaults are used.
 
     Returns
     -------
@@ -52,10 +57,10 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
         Radar object with new CMAC added fields.
     """
     # Retrieve values from the configuration file.
-    cmac_config = get_cmac_values(config)
-    field_config = get_field_names(config)
-    meta_config = get_metadata(config)
-    zs_relationship_dict = get_zs_relationships()
+    cmac_config = get_cmac_values(config, config_file=config_file)
+    field_config = get_field_names(config, config_file=config_file)
+    meta_config = get_metadata(config, config_file=config_file)
+    zs_relationship_dict = get_zs_relationships(config_file=config_file)
     # Over write site altitude
 
     if 'site_alt' in cmac_config.keys():
