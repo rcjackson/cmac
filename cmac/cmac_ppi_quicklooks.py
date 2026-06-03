@@ -21,7 +21,7 @@ plt.switch_backend('agg')
 
 
 def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
-                   dd_lobes=True):
+                   dd_lobes=True, config_file=None):
     """
     Quicklooks PPI, images produced with regards to CMAC
 
@@ -40,6 +40,9 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
         image file path is given, image path defaults to users home directory.
     dd_lobes : bool
         Plot DD lobes between radars if dd_lobes is True.
+    config_file : str or None
+        Path to a YAML file whose values override the built-in defaults for
+        the named ``config`` radar.
 
     """
     if image_directory is None:
@@ -50,8 +53,8 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
         only_use_cftime_datetimes=False, only_use_python_datetimes=True)
 
     # Retrieve the plot parameter values based on the radar.
-    plot_config = get_plot_values(config)
-    field_config = get_field_names(config)
+    plot_config = get_plot_values(config, config_file=config_file)
+    field_config = get_field_names(config, config_file=config_file)
     save_name = plot_config['save_name']
     date_string = datetime.strftime(radar_start_date, '%Y%m%d.%H%M%S')
     combined_name = '.' + save_name + '.' + date_string

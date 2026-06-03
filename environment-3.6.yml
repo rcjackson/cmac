@@ -10,6 +10,7 @@ dependencies:
   - cython=0.27
   - distributed
   - scikit-fuzzy
+  - pyyaml
   - pip
   - pip:
     - git+https://github.com/CSU-Radarmet/CSU_RadarTools.git

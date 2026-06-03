@@ -1,0 +1,73 @@
+# Example CMAC 2.0 user configuration.
+#
+# Pass this file via the `config_file=` argument on any of:
+#   cmac.get_metadata, cmac.get_field_names, cmac.get_cmac_values,
+#   cmac.get_plot_values, cmac.get_zs_relationships
+#   cmac.cmac, cmac.quicklooks_ppi, cmac.quicklooks_rhi, cmac.tall_clutter
+#
+# Values defined here OVERRIDE the matching defaults in
+# cmac/default_config.py. Anything you do not list falls back to the
+# defaults, so you only need to specify what you want to change.
+#
+# Sections (all optional): metadata, field_names, cmac_values,
+# plot_values, zs_relationships.
+
+# --- Tweak an existing radar key (xsapr_i5_ppi) -----------------------------
+cmac_values:
+  xsapr_i5_ppi:
+    # Bump the reflectivity offset without re-stating the rest of the dict.
+    ref_offset: 1.5
+    zdr_offset: 2.8
+
+metadata:
+  xsapr_i5_ppi:
+    developers: "Your Name, Your Institution."
+
+# --- Add a brand-new radar key --------------------------------------------
+# A new radar key needs every section the downstream code reads. For cmac()
+# that is field_names + cmac_values + metadata; plot_values is only needed
+# if you call quicklooks_ppi / quicklooks_rhi for it.
+field_names:
+  my_radar_ppi:
+    input_zdr: differential_reflectivity
+    reflectivity: reflectivity
+    input_phidp_field: differential_phase
+    velocity: velocity
+    normalized_coherent_power: normalized_coherent_power
+    cross_correlation_ratio: cross_correlation_ratio
+    differential_reflectivity: differential_reflectivity
+    signal_to_noise_ratio: null
+    altitude: alt
+    temperature: tdry
+    u_wind: u_wind
+    v_wind: v_wind
+    zdr_field: corrected_differential_reflectivity
+    pia_field: path_integrated_attenuation
+    phidp_field: filtered_corrected_differential_phase
+    refl_field: corrected_reflectivity
+
+# Re-open cmac_values to add the new radar alongside the override above.
+# (YAML lets you merge two `cmac_values:` blocks by listing both radar keys
+# under one top-level entry — shown here as a single block for clarity.)
+#
+# cmac_values:
+#   my_radar_ppi:
+#     save_name: my_site_cmac.c1
+#     sonde_name: my_sonde.b1
+#     site_alt: 200
+#     ref_offset: 0.0
+#     self_const: 60000.0
+#     attenuation_a_coef: 0.17
+#     rain_rate_a_coef_A: 43.5
+#     rain_rate_b_coef_A: 0.79
+#     rain_rate_a_coef_Z: 0.029
+#     rain_rate_b_coef_Z: 0.67
+#     rain_rate_a_coef_Kdp: 16.9
+#     rain_rate_b_coef_Kdp: 0.801
+
+# --- Add or override a Z-S relationship -----------------------------------
+zs_relationships:
+  My Lab Relationship:
+    A: 95
+    B: 1.85
+    abbreviation: mylab
