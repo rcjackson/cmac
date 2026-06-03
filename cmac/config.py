@@ -1,7 +1,7 @@
 """
 cmac.config
 ===========
-CMAC 2.0 Configuration.
+CMAC Configuration.
 
     get_metadata
     get_field_names
@@ -136,7 +136,7 @@ def get_field_names(radar, config_file=None):
 def get_cmac_values(radar, config_file=None):
     """
     Return the values specific to a radar for processing the radar data,
-    using CMAC 2.0. When ``config_file`` is provided, values from the YAML
+    using CMAC. When ``config_file`` is provided, values from the YAML
     file override the defaults.
     """
     if config_file is None:

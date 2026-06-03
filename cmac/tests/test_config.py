@@ -1,4 +1,4 @@
-""" Unit Tests for CMAC 2.0's config.py module. """
+""" Unit Tests for CMAC's config.py module. """
 
 import os
 import textwrap

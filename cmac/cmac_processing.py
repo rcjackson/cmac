@@ -1,4 +1,4 @@
-""" Module that does various CMAC 2.0 calculations. This code was written by
+""" Module that does various CMAC calculations. This code was written by
 Scott Collis and Robert Jackson. """
 
 import copy

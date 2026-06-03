@@ -1,9 +1,9 @@
-CMAC 2.0
-========
+CMAC
+====
 
 CMAC: Corrected Precipitation Radar Moments in Antenna Coordinates
 
-CMAC 2.0 (Corrected Moments in Antenna Coordinates version 2) is a set of
+CMAC (Corrected Moments in Antenna Coordinates) is a set of
 algorithms and code that does corrections to Radar data, but also adds fields
 to the original data. Using fuzzy logic CMAC also calculates gate IDs such as
 rain, snow and second-trip. Some other examples of the corrections done are
@@ -19,16 +19,16 @@ Interactive notebooks on the cloud
  
  
 The `Atmospheric Community Toolkit <https://arm-doe.github.io/ACT>`_ is installed in this binder
-and can be used to download data for CMAC2.0 from ARM Data Discovery. For an example on how
+and can be used to download data for CMAC from ARM Data Discovery. For an example on how
 to download ARM datastreams from Data Discovery, click `here <https://arm-doe.github.io/ACT/API/generated/act.discovery.download_data.html#act.discovery.download_data>`_.
 
 
-All ARM files are in the format that is needed by CMAC2.0 for processing.
+All ARM files are in the format that is needed by CMAC for processing.
 
 Install
 -------
 
-CMAC 2.0 and the required environment can be installed by using the
+CMAC and the required environment can be installed by using the
 instructions below::
 
         git clone https://github.com/EVS-ATMOS/cmac2.0.git
@@ -56,10 +56,10 @@ need to be replaced with corresponding version number found here:
 
 https://anaconda.org/menpo/ffmpeg
 
-Using CMAC 2.0
---------------
+Using CMAC
+----------
 
-Once downloaded, CMAC 2.0 can be used in the terminal. The required arguments
+Once downloaded, CMAC can be used in the terminal. The required arguments
 are radar_file, sonde_file, clutter_file and config_dict. There are optional
 arguments such as out_radar, image_directory and sweep for the quicklooks.
 

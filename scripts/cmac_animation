@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-""" CMAC 2.0 animation generator. """
+""" CMAC animation generator. """
 
 import argparse
 import datetime

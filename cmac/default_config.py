@@ -1,5 +1,5 @@
 """
-Configuration file for the Corrected Moments Antenna Coordinates (CMAC2.0).
+Configuration file for the Corrected Moments Antenna Coordinates (CMAC).
 
 The values for a number of parameters that change depending on which radar is
 being used.
@@ -256,7 +256,7 @@ _DEFAULT_METADATA = {
                         + 'engineering team radar@arm.gov and the data is '
                         + 'processed by the precipitation radar products team. '
                         + 'LP code courtesy of Scott Giangrande BNL.',
-        'process_version': 'CMAC 2.0',
+        'process_version': 'CMAC',
         'vap_name': 'cmac',
         'known_issues': 'False phidp jumps in insect regions. Still uses old '
                         + 'Giangrande code. Issues with some snow below '
@@ -768,17 +768,17 @@ nsa_xsapr_ppi_hard_const = [['melting', 'sounding_temperature', (10, 100)],
 
 
 ##############################################################################
-# Default CMAC 2.0 values
+# Default CMAC values
 #
 # The DEFAULT_CMAC_VALUES dictionary contains dictionaries for radars that
-# contains parameter values used in the CMAC 2.0 processing. Values in these
+# contains parameter values used in the CMAC processing. Values in these
 # radar dictionaries are used for a variety of functions, such as hydrometeor
 # classification, phase processing, specific attenuation and more. These
 # values are all used within cmac_radar.py.
 ##############################################################################
 
 _DEFAULT_CMAC_VALUES = {
-    # X-SAPR I6 PPI CMAC 2.0 processing values.
+    # X-SAPR I6 PPI CMAC processing values.
     'xsapr_i6_ppi': {
         'save_name': 'sgpxsaprcmacsurI6.c1',
         'sonde_name': 'sgpsondewnpnC1.b1',
@@ -798,7 +798,7 @@ _DEFAULT_CMAC_VALUES = {
         'rain_rate_a_coef_Kdp': 16.9,
         'rain_rate_b_coef_Kdp': 0.801,},
 
-    # X-SAPR I5 PPI CMAC 2.0 processing values.
+    # X-SAPR I5 PPI CMAC processing values.
     'xsapr_i5_cfr_ppi': {
         'save_name': 'sgpxsaprcmacsurI5.c1',
         'sonde_name': 'sgpsondewnpnC1.b1',
@@ -814,7 +814,7 @@ _DEFAULT_CMAC_VALUES = {
         'rain_rate_a_coef_Kdp': 16.9,
         'rain_rate_b_coef_Kdp': 0.801,},
 
-    # X-SAPR I4 PPI CMAC 2.0 processing values.
+    # X-SAPR I4 PPI CMAC processing values.
     'xsapr_i4_ppi': {
         'save_name': 'sgpxsaprcmacsurI4.c1',
         'sonde_name': 'sgpsondewnpnC1.b1',
@@ -834,7 +834,7 @@ _DEFAULT_CMAC_VALUES = {
         'rain_rate_a_coef_Kdp': 16.9,
         'rain_rate_b_coef_Kdp': 0.801,},
 
-    # X-SAPR I6 Sector CMAC 2.0 processing values.
+    # X-SAPR I6 Sector CMAC processing values.
     'xsapr_i6_sec': {
         'save_name': 'sgpxsaprcmacsecI6.c1',
         'sonde_name': 'sgpsondewnpnC1.b1',
@@ -854,7 +854,7 @@ _DEFAULT_CMAC_VALUES = {
         'rain_rate_a_coef_Kdp': 16.9,
         'rain_rate_b_coef_Kdp': 0.801,},
 
-    # X-SAPR I5 Sector CMAC 2.0 processing values.
+    # X-SAPR I5 Sector CMAC processing values.
     'xsapr_i5_sec': {
         'save_name': 'sgpxsaprcmacsecI5.c1',
         'sonde_name': 'sgpsondewnpnC1.b1',
@@ -874,7 +874,7 @@ _DEFAULT_CMAC_VALUES = {
         'rain_rate_a_coef_Kdp': 16.9,
         'rain_rate_b_coef_Kdp': 0.801,},
 
-    # X-SAPR I5 Sector CMAC 2.0 processing values.
+    # X-SAPR I5 Sector CMAC processing values.
     'xsapr_i5_ppi': {
         'save_name': 'sgpxsaprcmacsecI5.c1',
         'sonde_name': 'sgpsondewnpnC1.b1',
@@ -894,7 +894,7 @@ _DEFAULT_CMAC_VALUES = {
         'rain_rate_a_coef_Kdp': 16.9,
         'rain_rate_b_coef_Kdp': 0.801,},
     
-    # X-SAPR I5 RHI CMAC 2.0 processing values.
+    # X-SAPR I5 RHI CMAC processing values.
     'xsapr_i5_rhi': {
         'save_name': 'sgpxsaprcmacrhiI5.c1',
         'sonde_name': 'sgpsondewnpnC1.b1',
@@ -914,7 +914,7 @@ _DEFAULT_CMAC_VALUES = {
         'rain_rate_a_coef_Kdp': 16.9,
         'rain_rate_b_coef_Kdp': 0.801,},
 
-    # X-SAPR I4 Sector CMAC 2.0 processing values.
+    # X-SAPR I4 Sector CMAC processing values.
     'xsapr_i4_sec': {
         'save_name': 'sgpxsaprcmacsecI4.c1',
         'sonde_name': 'sgpsondewnpnC1.b1',
@@ -934,7 +934,7 @@ _DEFAULT_CMAC_VALUES = {
         'rain_rate_a_coef_Kdp': 16.9,
         'rain_rate_b_coef_Kdp': 0.801,},
 
-    # CACTI C-SAPR 2 CMAC 2.0 processing values.
+    # CACTI C-SAPR 2 CMAC processing values.
     'cacti_csapr2_ppi': {
         'save_name': 'corcsapr2cmacppi.c1',
         'sonde_name': 'corsondewnpnM1.b1',
@@ -964,7 +964,7 @@ _DEFAULT_CMAC_VALUES = {
         'beam_width': 1.0,
         'radar_height_offset': 10.0,},  # We expect clutter corrected fields now
     
-    # Tracer C-SAPR 2 CMAC 2.0 processing values.
+    # Tracer C-SAPR 2 CMAC processing values.
     'tracer_csapr2_ppi': {
         'save_name': 'houcsapr2cmacppiS2.c1',
         'sonde_name': 'housondewnpnM1.b1',
@@ -992,7 +992,7 @@ _DEFAULT_CMAC_VALUES = {
         'beam_width': 1.0,
         'radar_height_offset': 10.0,},  # We expect clutter corrected fields now
 
-    # Tracer C-SAPR 2 CMAC 2.0 processing values.
+    # Tracer C-SAPR 2 CMAC processing values.
     'bnf_csapr2_ppi': {
         'save_name': 'bnfcsapr2cmacppiS3.c1',
         'sonde_name': 'bnfsondewnpnM1.b1',
@@ -1022,7 +1022,7 @@ _DEFAULT_CMAC_VALUES = {
         'beam_width': 1.0,
         'radar_height_offset': 10.0,},  # We expect clutter corrected fields now
 
-    # NSA X-SAPR CMAC 2.0 processing values.
+    # NSA X-SAPR CMAC processing values.
     'nsa_xsapr_ppi': {
         'save_name': 'nsaxsaprcmacppiC1.c1',
         'sonde_name': 'nsasondewnpnC1.b1',
@@ -1050,7 +1050,7 @@ _DEFAULT_CMAC_VALUES = {
         'beam_width': 1.0,
         'radar_height_offset': 10.0,},
     
-    # X-SAPR I4 Sector CMAC 2.0 processing values.
+    # X-SAPR I4 Sector CMAC processing values.
     'sail_xband_ppi': {
         'save_name': 'gucxprecipradarcmacppiS2.c1',
         'sonde_name': 'gucsondewnpnM1.b1',
@@ -1077,7 +1077,7 @@ _DEFAULT_CMAC_VALUES = {
 # Default plot values
 #
 # The DEFAULT_PLOT_VALUES dictionary contains dictionaries for radars that
-# contains parameter values used in the CMAC 2.0 quicklooks. Values in these
+# contains parameter values used in the CMAC quicklooks. Values in these
 # radar dictionaries are used for defining specifications for plotting
 # specific radars. Specifications such as, max latitude and longitude, sweep
 # and coordinates for dual doppler lobes. These values are all used within

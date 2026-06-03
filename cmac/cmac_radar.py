@@ -1,4 +1,4 @@
-""" Module that uses CMAC 2.0 to remove and correct second trip returns,
+""" Module that uses CMAC to remove and correct second trip returns,
 correct velocity and more. A new radar object is then created with all CMAC
 2.0 products. """
 
@@ -31,7 +31,7 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
     sonde : xarray Dataset
         Object containing all the sonde data.
     config : str
-        A string pointing to dictionaries containing values for CMAC 2.0
+        A string pointing to dictionaries containing values for CMAC
         specific to a radar.
 
     Other Parameters

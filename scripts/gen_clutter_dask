@@ -13,9 +13,9 @@ from cmac import tall_clutter
 
 
 def main():
-    """ The main function use calculates clutter for CMAC 2.0. """
+    """ The main function use calculates clutter for CMAC. """
     parser = argparse.ArgumentParser(
-        description='Create a radar object with applied CMAC2.0.')
+        description='Create a radar object with applied CMAC.')
     parser.add_argument(
         'radar_path', type=str, help=('Radar path to use for calculations.',
                                       'The program will search recursively',

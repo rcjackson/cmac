@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-""" Creates a radar object with applied CMAC 2.0 and quicklooks pertaining
-to CMAC 2.0. """
+""" Creates a radar object with applied CMAC and quicklooks pertaining
+to CMAC. """
 
 import argparse
 import datetime
@@ -61,7 +61,7 @@ def run_cmac_and_plotting(radar_file_path, sounding_times, args):
                  + minute_str + second_str + '.nc')
 
     # If overwrite is False, checks to see if the cmac_radar file
-    # already exists. If so, CMAC 2.0 is not used on the original radar file.
+    # already exists. If so, CMAC is not used on the original radar file.
     if args.overwrite is False and os.path.exists(file_name) is True:
         print(file_name + ' already exists.')
         return
@@ -132,7 +132,7 @@ def main():
     to produce a CMAC radar and images pertaining to CMAC. """
     bt = time.time()
     parser = argparse.ArgumentParser(
-        description='Create a radar object with applied CMAC2.0.')
+        description='Create a radar object with applied CMAC.')
     parser.add_argument(
         'radar_path', type=str, help=('Radar path to use for calculations.',
                                       'The program will search recursively',
@@ -144,7 +144,7 @@ def main():
         help='Sonde path to use for CMAC calculation.')
     parser.add_argument(
         'config', type=str, help=('Radar configuration dictionary for',
-                                  'pulling values for CMAC 2.0, specific',
+                                  'pulling values for CMAC, specific',
                                   'to the radar being used.'))
     parser.add_argument(
         '-cf', '--clutter_file', type=str, default=None,
@@ -236,7 +236,7 @@ def main():
     subprocess.call('chmod -R g+rw ' + args.image_directory, shell=True)
     subprocess.call('chmod -R g+rw ' + args.out_radar, shell=True)
     print('##')
-    print('## CMAC 2.0 Completed in ' + str(time.time() - bt) + ' s')
+    print('## CMAC Completed in ' + str(time.time() - bt) + ' s')
     client.shutdown()
 
 if __name__ == '__main__':
