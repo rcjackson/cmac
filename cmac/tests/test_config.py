@@ -7,7 +7,7 @@ import pytest
 
 from cmac.config import (get_cmac_values, get_field_names,
                          get_plot_values, get_metadata,
-                         get_zs_relationships)
+                         get_zs_relationships, get_default_metadata)
 
 
 def test_get_cmac_values():
@@ -139,3 +139,113 @@ def test_yaml_missing_file_raises(tmp_path):
     missing = str(tmp_path / "nope.yaml")
     with pytest.raises(FileNotFoundError):
         get_cmac_values('xsapr_i5_ppi', config_file=missing)
+
+
+# -- New soft-coded parameter defaults -------------------------------------
+
+
+def test_processing_defaults_present_for_all_radars():
+    """Every radar gains the processing tunables from default_config."""
+    for radar in ('xsapr_i5_ppi', 'cacti_csapr2_ppi', 'bnf_csapr2_ppi',
+                  'sail_xband_ppi', 'nsa_xsapr_ppi', 'tracer_csapr2_ppi'):
+        cfg = get_cmac_values(radar)
+        assert cfg['snow_density'] == 0.073
+        assert cfg['phidp_nowrap'] == 50
+        assert cfg['phidp_despeckle_size'] == 49
+        assert cfg['melt_fzl_ceiling'] == 5000.0
+        assert cfg['melt_fzl_replacement'] == 3500.0
+        assert cfg['melt_fzl_floor'] == 1000.0
+        assert cfg['velocity_texture_window'] == 4
+        assert cfg['area_coverage_precip_threshold'] == 10.0
+        assert cfg['area_coverage_convection_threshold'] == 40.0
+        assert cfg['cbb_blockage_threshold'] == 0.80
+
+
+def test_plot_defaults_present_for_all_radars():
+    """Every radar gains the plot tunables from default_config."""
+    for radar in ('xsapr_i5_ppi', 'cacti_csapr2_ppi', 'bnf_csapr2_ppi',
+                  'sail_xband_ppi', 'nsa_xsapr_ppi', 'tracer_csapr2_ppi'):
+        cfg = get_plot_values(radar)
+        assert cfg['reflectivity_vmin'] == -8
+        assert cfg['reflectivity_vmax'] == 40
+        assert cfg['corrected_velocity_vmin'] == -60
+        assert cfg['corrected_velocity_vmax'] == 60
+        assert cfg['rain_rate_vmin'] == 0
+        assert cfg['rain_rate_vmax'] == 120
+        assert cfg['figsize_single'] == [12, 8]
+        assert cfg['figsize_panel'] == [15, 10]
+        assert cfg['sweep_fallback_nsweeps_lt'] == 4
+        assert cfg['sweep_fallback'] == 2
+        assert cfg['cat_colors']['rain'] == 'green'
+        assert cfg['cat_colors']['clutter'] == 'black'
+
+
+PROCESSING_OVERRIDE_YAML = textwrap.dedent("""
+    cmac_values:
+      xsapr_i5_ppi:
+        snow_density: 0.10
+        phidp_nowrap: 80
+        melt_fzl_ceiling: 6000.0
+        area_coverage_precip_threshold: 5.0
+        cbb_blockage_threshold: 0.6
+    plot_values:
+      xsapr_i5_ppi:
+        reflectivity_vmax: 55
+        corrected_velocity_vmin: -45
+        figsize_single: [10, 6]
+        ymax: 12
+        cat_colors:
+          rain: blue
+          snow: white
+          multi_trip: red
+          no_scatter: gray
+          melting: yellow
+          clutter: black
+    default_metadata:
+      developers: "Override Author"
+      institution: "Test Institution"
+    """)
+
+
+@pytest.fixture
+def processing_override_config(tmp_path):
+    path = tmp_path / "processing_overrides.yaml"
+    path.write_text(PROCESSING_OVERRIDE_YAML)
+    return str(path)
+
+
+def test_yaml_overrides_processing_tunables(processing_override_config):
+    cfg = get_cmac_values('xsapr_i5_ppi', config_file=processing_override_config)
+    assert cfg['snow_density'] == 0.10
+    assert cfg['phidp_nowrap'] == 80
+    assert cfg['melt_fzl_ceiling'] == 6000.0
+    assert cfg['area_coverage_precip_threshold'] == 5.0
+    assert cfg['cbb_blockage_threshold'] == 0.6
+    # Defaults still surface for keys not overridden.
+    assert cfg['phidp_despeckle_size'] == 49
+
+
+def test_yaml_overrides_plot_ranges(processing_override_config):
+    cfg = get_plot_values('xsapr_i5_ppi', config_file=processing_override_config)
+    assert cfg['reflectivity_vmax'] == 55
+    assert cfg['corrected_velocity_vmin'] == -45
+    assert cfg['figsize_single'] == [10, 6]
+    assert cfg['ymax'] == 12
+    assert cfg['cat_colors']['rain'] == 'blue'
+    # Defaults preserved when not overridden.
+    assert cfg['rain_rate_vmax'] == 120
+
+
+def test_get_default_metadata_returns_builtin_fallback():
+    meta = get_default_metadata()
+    assert meta['vap_name'] == 'cmac'
+    assert meta['version'] == '2.0 lite'
+    assert meta['Conventions'] == 'CF/Radial instrument_parameters ARM-1.3'
+
+
+def test_get_default_metadata_yaml_override(processing_override_config):
+    meta = get_default_metadata(config_file=processing_override_config)
+    assert meta['developers'] == 'Override Author'
+    assert meta['institution'] == 'Test Institution'
+    # Untouched keys keep their built-in defaults.
+    assert meta['vap_name'] == 'cmac'

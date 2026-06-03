@@ -1266,5 +1266,144 @@ _DEFAULT_ZS_RELATIONSHIPS = {"Wolf and Snider (2012)":
                               "B": 1.39,
                               "abbreviation": "m2009_2"},
                              }
-                             
+
+
+#########################################################################
+# Default global metadata fallback used by ``cmac()`` when the caller
+# does not pass ``meta_append``. Overridable via the top-level
+# ``default_metadata`` YAML section.
+#########################################################################
+
+_DEFAULT_GLOBAL_METADATA = {
+    'site_id': None,
+    'data_level': 'sgp',
+    'comment': 'This is highly experimental and initial data. '
+               + 'There are many known and unknown issues. Please do '
+               + 'not use before contacting the Translator responsible '
+               + 'scollis@anl.gov',
+    'attributions': 'This data is collected by the ARM Climate Research '
+                    + 'facility. Radar system is operated by the radar '
+                    + 'engineering team radar@arm.gov and the data is '
+                    + 'processed by the precipitation radar products '
+                    + 'team. LP code courtesy of Scott Giangrande, BNL.',
+    'version': '2.0 lite',
+    'vap_name': 'cmac',
+    'known_issues': 'False phidp jumps in insect regions. Still uses '
+                    + 'old Giangrande code.',
+    'developers': 'Robert Jackson, ANL. Zachary Sherman, ANL.',
+    'translator': 'Scott Collis, ANL.',
+    'mentors': 'Bradley Isom, PNNL., Iosif Lindenmaier, PNNL.',
+    'Conventions': 'CF/Radial instrument_parameters ARM-1.3'}
+
+
+#########################################################################
+# Default processing tunables and plot-field ranges
+#
+# These dictionaries hold the literal numeric defaults previously baked
+# into ``cmac_radar.py``, ``cmac_processing.py``, and the quicklooks
+# modules. Per-radar entries in ``_DEFAULT_CMAC_VALUES`` and
+# ``_DEFAULT_PLOT_VALUES`` are populated from these dictionaries below;
+# users can override any single value via the YAML config.
+#########################################################################
+
+# Processing tunables (cmac_radar.py / cmac_processing.py)
+_DEFAULT_PROCESSING_TUNABLES = {
+    'snow_density': 0.073,
+    'phidp_nowrap': 50,
+    'kdp_phase_proc_max': 10.0,
+    'phidp_despeckle_size': 49,
+    'corrected_velocity_valid_min': -100.0,
+    'corrected_velocity_valid_max': 100.0,
+    'melt_fzl_ceiling': 5000.0,
+    'melt_fzl_replacement': 3500.0,
+    'melt_fzl_floor': 1000.0,
+    'max_kdp': 15.0,
+    'velocity_texture_window': 4,
+    'velocity_texture_median_size': (4, 4),
+    'fuzzy_score_median_size': (3, 4),
+    'fuzzy_tex_start': 2.0,
+    'fuzzy_tex_end': 2.1,
+    'area_coverage_precip_threshold': 10.0,
+    'area_coverage_convection_threshold': 40.0,
+    'rain_rate_valid_max': 400,
+    'snow_rate_valid_max': 500,
+    'cbb_blockage_threshold': 0.80,
+}
+
+# Plot-field vmin/vmax pairs used by the quicklooks
+_DEFAULT_PLOT_FIELD_RANGES = {
+    'reflectivity_raw_vmin': -8,
+    'reflectivity_raw_vmax': 64,
+    'reflectivity_vmin': -8,
+    'reflectivity_vmax': 40,
+    'velocity_texture_vmin': 0,
+    'velocity_texture_vmax': 14,
+    'cross_correlation_ratio_vmin': 0.5,
+    'cross_correlation_ratio_vmax': 1.0,
+    'specific_attenuation_vmin': 0,
+    'specific_attenuation_vmax': 1.0,
+    'corrected_specific_diff_phase_vmin': 0,
+    'corrected_specific_diff_phase_vmax': 6,
+    'filtered_corrected_differential_phase_vmin': 0,
+    'filtered_corrected_differential_phase_vmax': 360,
+    'filtered_corrected_specific_diff_phase_vmin': -2,
+    'filtered_corrected_specific_diff_phase_vmax': 10,
+    'corrected_reflectivity_vmin': 0,
+    'corrected_reflectivity_vmax': 40,
+    'corrected_velocity_vmin': -60,
+    'corrected_velocity_vmax': 60,
+    'rain_rate_vmin': 0,
+    'rain_rate_vmax': 120,
+    'snow_rate_vmin': 0,
+    'snow_rate_vmax': 50,
+}
+
+# Layout / misc plotting defaults
+_DEFAULT_PLOT_LAYOUT = {
+    'figsize_single': [12, 8],
+    'figsize_panel': [15, 10],
+    'lat_lon_tick_spacing': 0.8,
+    'dd_lobe_grid_spacing': 0.01,
+    'dd_lobe_bca_levels': [0.5235987755982988, 2.6179938779914944],  # [pi/6, 5*pi/6]
+    'sweep_fallback_nsweeps_lt': 4,
+    'sweep_fallback': 2,
+    'ymin': 0,
+    'ymax': 10,
+    'cat_colors': {
+        'rain': 'green',
+        'multi_trip': 'red',
+        'no_scatter': 'gray',
+        'snow': 'cyan',
+        'melting': 'yellow',
+        'clutter': 'black',
+        'terrain_blockage': 'brown',
+    },
+}
+
+# Helpers used below to attach the new defaults to every per-radar entry
+# without losing any existing per-radar overrides.
+
+def _with_processing_defaults(radar_cfg):
+    merged = dict(_DEFAULT_PROCESSING_TUNABLES)
+    merged.update(radar_cfg)
+    return merged
+
+
+def _with_plot_defaults(radar_cfg):
+    merged = dict(_DEFAULT_PLOT_FIELD_RANGES)
+    merged.update(_DEFAULT_PLOT_LAYOUT)
+    merged.update(radar_cfg)
+    return merged
+
+
+_DEFAULT_CMAC_VALUES = {
+    radar: _with_processing_defaults(cfg)
+    for radar, cfg in _DEFAULT_CMAC_VALUES.items()
+}
+
+_DEFAULT_PLOT_VALUES = {
+    radar: _with_plot_defaults(cfg)
+    for radar, cfg in _DEFAULT_PLOT_VALUES.items()
+}
+
 

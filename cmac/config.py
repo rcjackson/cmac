@@ -46,7 +46,8 @@ from copy import deepcopy
 
 from .default_config import (_DEFAULT_METADATA, _DEFAULT_FIELD_NAMES,
                              _DEFAULT_CMAC_VALUES, _DEFAULT_PLOT_VALUES,
-                             _DEFAULT_ZS_RELATIONSHIPS)
+                             _DEFAULT_ZS_RELATIONSHIPS,
+                             _DEFAULT_GLOBAL_METADATA)
 
 
 # Cache of parsed YAML files keyed by (absolute_path, mtime) so repeated calls
@@ -176,4 +177,24 @@ def get_zs_relationships(config_file=None):
         raise ValueError(
             "YAML config section 'zs_relationships' must be a mapping.")
     base.update(deepcopy(zs_overrides))
+    return base
+
+
+def get_default_metadata(config_file=None):
+    """
+    Return the global fallback metadata used by ``cmac()`` when the caller
+    does not pass ``meta_append``. When ``config_file`` is provided, any
+    keys under the top-level ``default_metadata`` section of the YAML file
+    override (or extend) the built-in defaults.
+    """
+    base = deepcopy(_DEFAULT_GLOBAL_METADATA)
+    if config_file is None:
+        return base
+
+    yaml_cfg = _load_yaml_config(config_file)
+    overrides = yaml_cfg.get('default_metadata') or {}
+    if not isinstance(overrides, dict):
+        raise ValueError(
+            "YAML config section 'default_metadata' must be a mapping.")
+    base.update(deepcopy(overrides))
     return base

@@ -14,11 +14,12 @@ import netCDF4
 from .cmac_processing import (
     do_my_fuzz, get_melt, get_texture, fix_phase_fields, gen_clutter_field_from_refl, beam_block,
     snow_rate, rain_rate)
-from .config import get_cmac_values, get_field_names, get_metadata, get_zs_relationships
+from .config import (get_cmac_values, get_field_names, get_metadata,
+                     get_zs_relationships, get_default_metadata)
 from csu_radartools import csu_kdp
 
 def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
-         meta_append=None, verbose=True, snow_density=0.073, snowfall=True,
+         meta_append=None, verbose=True, snow_density=None, snowfall=True,
          config_file=None):
     """
     Corrected Moments in Antenna Coordinates
@@ -44,8 +45,10 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
         be created by providing a dictionary or a json file.
     verbose : bool
         If True, this will display more statistics.
-    snow_density : float
-        1 / Snow water equivalent ratio for snowfall rate
+    snow_density : float or None
+        1 / Snow water equivalent ratio for snowfall rate. If None, the
+        value is taken from the ``snow_density`` key of the radar config
+        (default ``0.073``).
     config_file : str or None
         Path to a YAML file whose values override the built-in defaults for
         the named ``config`` radar. See ``cmac.config`` for the expected
@@ -61,6 +64,9 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
     field_config = get_field_names(config, config_file=config_file)
     meta_config = get_metadata(config, config_file=config_file)
     zs_relationship_dict = get_zs_relationships(config_file=config_file)
+
+    if snow_density is None:
+        snow_density = cmac_config.get('snow_density', 0.073)
     # Over write site altitude
 
     if 'site_alt' in cmac_config.keys():
@@ -139,10 +145,16 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
         radar.fields[
             'clutter_masked_velocity']['long_name'] = 'Radial mean Doppler velocity, positive for motion away from the instrument, clutter removed'
 
-        texture = get_texture(radar, 'clutter_masked_velocity')
+        texture = get_texture(
+            radar, 'clutter_masked_velocity',
+            window=cmac_config.get('velocity_texture_window', 4),
+            median_size=cmac_config.get('velocity_texture_median_size', (4, 4)))
         texture['data'][np.isnan(texture['data'])] = 0.0
     else:
-        texture = get_texture(radar, vel_field)
+        texture = get_texture(
+            radar, vel_field,
+            window=cmac_config.get('velocity_texture_window', 4),
+            median_size=cmac_config.get('velocity_texture_median_size', (4, 4)))
     
     if field_config['signal_to_noise_ratio'] is None:
         snr = pyart.retrieve.calculate_snr_from_reflectivity(radar)
@@ -188,9 +200,13 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
 
     # Specifically for dealing with the ingested C-SAPR2 data
 
-    my_fuzz, _ = do_my_fuzz(radar, rhv_field, ncp_field, verbose=verbose,
-                            custom_mbfs=cmac_config['mbfs'],
-                            custom_hard_constraints=cmac_config['hard_const'])
+    my_fuzz, _ = do_my_fuzz(
+        radar, rhv_field, ncp_field, verbose=verbose,
+        tex_start=cmac_config.get('fuzzy_tex_start', 2.0),
+        tex_end=cmac_config.get('fuzzy_tex_end', 2.1),
+        custom_mbfs=cmac_config['mbfs'],
+        custom_hard_constraints=cmac_config['hard_const'],
+        median_size=cmac_config.get('fuzzy_score_median_size', (3, 4)))
 
     radar.add_field('gate_id', my_fuzz,
                     replace_existing=True)
@@ -219,11 +235,12 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
         radar.fields['gate_id']['valid_max'] = 5
         radar.fields['gate_id']['valid_min'] = 0
 
+    cbb_threshold = cmac_config.get('cbb_blockage_threshold', 0.80)
     if geotiff is not None:
         pbb_all, cbb_all = beam_block(
             radar, geotiff, cmac_config['radar_height_offset'],
             cmac_config['beam_width'])
-        radar.fields['gate_id']['data'][cbb_all > 0.80] = 6
+        radar.fields['gate_id']['data'][cbb_all > cbb_threshold] = 6
         notes = radar.fields['gate_id']['notes']
         radar.fields['gate_id']['notes'] = notes + ',6:terrain_blockage'
         radar.fields['gate_id']['valid_max'] = 6
@@ -289,12 +306,17 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
         print('##    corrected_velocity')
         print('##    simulated_velocity')
 
-    fzl = get_melt(radar)
-    
+    fzl = get_melt(
+        radar,
+        fzl_ceiling=cmac_config.get('melt_fzl_ceiling', 5000.0),
+        fzl_replacement=cmac_config.get('melt_fzl_replacement', 3500.0),
+        fzl_floor=cmac_config.get('melt_fzl_floor', 1000.0))
+
     # Is the freezing level realistic? If not, assume
-    
+
     ref_offset = cmac_config['ref_offset']
     self_const = cmac_config['self_const']
+    phidp_nowrap = cmac_config.get('phidp_nowrap', 50)
     # Calculating differential phase fields.
     radar.fields[field_config['input_phidp_field']]['data'][
         radar.fields[field_config['input_phidp_field']]['data'] < 0] += 360.0
@@ -307,7 +329,7 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
     if cmac_config['kdp_method'] == 'lp':
         phidp, kdp = pyart.correct.phase_proc_lp_gf(
             radar, gatefilter=kdp_gates, offset=ref_offset, debug=True,
-            LP_solver='cylp', nowrap=50, fzl=fzl, self_const=self_const,
+            LP_solver='cylp', nowrap=phidp_nowrap, fzl=fzl, self_const=self_const,
             phidp_field=field_config['input_phidp_field'],
             refl_field=field_config['reflectivity'])
     elif cmac_config['kdp_method'] == 'bringi':
@@ -343,7 +365,7 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
    
     phidp_filt, kdp_filt = fix_phase_fields(
         copy.deepcopy(kdp), copy.deepcopy(phidp), radar.range['data'],
-        kdp_gates)
+        kdp_gates, max_kdp=cmac_config.get('max_kdp', 15.0))
     
     radar.add_field('filtered_corrected_differential_phase', phidp,
                     replace_existing=True)
@@ -388,9 +410,13 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
     phase_proc_gates.exclude_all()
     phase_proc_gates.include_equal('gate_id', 1)
     phase_proc_gates.include_equal('gate_id', 2)
-    phase_proc_gates.exclude_above('corrected_specific_diff_phase', 10.0)
-    phase_proc_gates = pyart.correct.despeckle_field(radar, 'differential_phase',
-            gatefilter=phase_proc_gates, size=49)
+    phase_proc_gates.exclude_above(
+        'corrected_specific_diff_phase',
+        cmac_config.get('kdp_phase_proc_max', 10.0))
+    phase_proc_gates = pyart.correct.despeckle_field(
+        radar, 'differential_phase',
+        gatefilter=phase_proc_gates,
+        size=cmac_config.get('phidp_despeckle_size', 49))
     radar.fields['sounding_temperature_filled'] = copy.deepcopy(radar.fields['sounding_temperature'])
     radar.fields['sounding_temperature_filled']['data'] = np.where(
             radar.fields['sounding_temperature_filled']['data'] > -100.,
@@ -420,10 +446,12 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
     
     radar.fields['corrected_velocity']['units'] = 'm/s'
     if 'valid_min' not in radar.fields['corrected_velocity'].keys():
-        radar.fields['corrected_velocity']['valid_min'] = -100.0
+        radar.fields['corrected_velocity']['valid_min'] = cmac_config.get(
+            'corrected_velocity_valid_min', -100.0)
 
     if 'valid_max' not in radar.fields['corrected_velocity'].keys():
-        radar.fields['corrected_velocity']['valid_max'] = 100.0
+        radar.fields['corrected_velocity']['valid_max'] = cmac_config.get(
+            'corrected_velocity_valid_max', 100.0)
 
     radar.fields['corrected_velocity']['valid_min'] = np.round(
         radar.fields['corrected_velocity']['valid_min'], 4)
@@ -442,18 +470,22 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
     rain_gates = pyart.correct.GateFilter(radar)
     rain_gates.exclude_all()
     rain_gates.include_equal('gate_id', cat_dict['rain'])
+    rr_valid_max = cmac_config.get('rain_rate_valid_max', 400)
     print("Rainfall rate A")
     rr_a = cmac_config['rain_rate_a_coef_A']
     rr_b = cmac_config['rain_rate_b_coef_A']
-    radar = rain_rate(radar, rr_a, rr_b, moment="specific_attenuation")
+    radar = rain_rate(radar, rr_a, rr_b, moment="specific_attenuation",
+                      valid_max=rr_valid_max)
     print("Rainfall Rate KDP")
     rr_a = cmac_config['rain_rate_a_coef_Kdp']
     rr_b = cmac_config['rain_rate_b_coef_Kdp']
-    radar = rain_rate(radar, rr_a, rr_b, moment="corrected_specific_diff_phase")
+    radar = rain_rate(radar, rr_a, rr_b, moment="corrected_specific_diff_phase",
+                      valid_max=rr_valid_max)
     print("Rainfall rate Z")
     rr_a = cmac_config['rain_rate_a_coef_Z']
     rr_b = cmac_config['rain_rate_b_coef_Z']
-    radar = rain_rate(radar, rr_a, rr_b, moment="corrected_reflectivity")
+    radar = rain_rate(radar, rr_a, rr_b, moment="corrected_reflectivity",
+                      valid_max=rr_valid_max)
     mask = cmac_gates.gate_excluded
 
     if snowfall == True:
@@ -464,11 +496,13 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
             print('## Rainfall rate as a function of A ##')
 
     
+        sr_valid_max = cmac_config.get('snow_rate_valid_max', 500)
         for zs_key in zs_relationship_dict.keys():
             abbreviation = zs_relationship_dict[zs_key]["abbreviation"]
             A = zs_relationship_dict[zs_key]["A"]
             B = zs_relationship_dict[zs_key]["B"]
-            radar = snow_rate(radar, 1 / snow_density, A, B, zs_key, abbreviation)
+            radar = snow_rate(radar, 1 / snow_density, A, B, zs_key,
+                              abbreviation, valid_max=sr_valid_max)
             radar.fields['snow_rate_%s' % abbreviation]['data'] = np.ma.masked_where(snow_gates.gate_excluded,
             radar.fields['snow_rate_%s' % abbreviation]['data'])
 
@@ -488,26 +522,7 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
     for item in sys.argv:
         command_line = command_line + ' ' + item
     if meta_append is None:
-        meta = {
-            'site_id': None,
-            'data_level': 'sgp',
-            'comment': 'This is highly experimental and initial data. '
-                       + 'There are many known and unknown issues. Please do '
-                       + 'not use before contacting the Translator responsible '
-                       + 'scollis@anl.gov',
-            'attributions': 'This data is collected by the ARM Climate Research '
-                            + 'facility. Radar system is operated by the radar '
-                            + 'engineering team radar@arm.gov and the data is '
-                            + 'processed by the precipitation radar products '
-                            + 'team. LP code courtesy of Scott Giangrande, BNL.',
-            'version': '2.0 lite',
-            'vap_name': 'cmac',
-            'known_issues': 'False phidp jumps in insect regions. Still uses '
-                            + 'old Giangrande code.',
-            'developers': 'Robert Jackson, ANL. Zachary Sherman, ANL.',
-            'translator': 'Scott Collis, ANL.',
-            'mentors': 'Bradley Isom, PNNL., Iosif Lindenmaier, PNNL.',
-            'Conventions': 'CF/Radial instrument_parameters ARM-1.3'}
+        meta = get_default_metadata(config_file=config_file)
     else:
         if meta_append.lower().endswith('.json'):
             with open(meta_append, 'r') as infile:
@@ -525,8 +540,27 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
     return radar
 
 
-def area_coverage(radar, precip_threshold=10.0, convection_threshold=40.0):
-    """ Returns percent coverage of precipitation and convection. """
+def area_coverage(radar, precip_threshold=None, convection_threshold=None,
+                  config=None, config_file=None):
+    """ Returns percent coverage of precipitation and convection.
+
+    Thresholds default to the per-radar ``area_coverage_precip_threshold``
+    and ``area_coverage_convection_threshold`` config values (10.0 and 40.0
+    dBZ respectively) when not passed explicitly. Pass ``config`` (the
+    radar config name) and optionally ``config_file`` to pull the defaults
+    from a YAML override.
+    """
+    if precip_threshold is None or convection_threshold is None:
+        if config is not None:
+            cmac_config = get_cmac_values(config, config_file=config_file)
+        else:
+            cmac_config = {}
+        if precip_threshold is None:
+            precip_threshold = cmac_config.get(
+                'area_coverage_precip_threshold', 10.0)
+        if convection_threshold is None:
+            convection_threshold = cmac_config.get(
+                'area_coverage_convection_threshold', 40.0)
     temp_radar = radar.extract_sweeps([0])
     ref = temp_radar.fields['corrected_reflectivity']['data']
     total_len = len(ref.flatten())

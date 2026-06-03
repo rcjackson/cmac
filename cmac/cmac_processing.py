@@ -20,8 +20,8 @@ rain_rate_abbrevs = {'specific_attenuation': 'A',
                      'corrected_specific_diff_phase': 'Kdp',
                      'corrected_reflectivity': 'Z'}
 
-def rain_rate(radar, A, B, moment="specific_attenuation"):
-    """ 
+def rain_rate(radar, A, B, moment="specific_attenuation", valid_max=400):
+    """
     Rain rate applied to a pyart Radar object.
 
     Takes a given set of an A coefficient and a B exponent to a
@@ -33,7 +33,7 @@ def rain_rate(radar, A, B, moment="specific_attenuation"):
         raise ValueError(f"Invalid moment: {moment}")
     else:
         abbrev = rain_rate_abbrevs[moment]
-    
+
     mom = radar.fields[moment]["data"]
     if moment == "corrected_reflectivity":
         mom = 10**(mom / 10.)
@@ -44,13 +44,14 @@ def rain_rate(radar, A, B, moment="specific_attenuation"):
     radar.fields[f'rain_rate_{abbrev}']['standard_name'] = 'rainfall_rate'
     radar.fields[f'rain_rate_{abbrev}']['long_name'] = f'Rainfall rate estimated from {abbrev}'
     radar.fields[f'rain_rate_{abbrev}']['valid_min'] = 0
-    radar.fields[f'rain_rate_{abbrev}']['valid_max'] = 400
+    radar.fields[f'rain_rate_{abbrev}']['valid_max'] = valid_max
     radar.fields[f'rain_rate_{abbrev}']['A_coefficient'] = A
     radar.fields[f'rain_rate_{abbrev}']['B_exponent'] = B
     return radar
     
 
-def snow_rate(radar, swe_ratio, A, B, citation='Wolf and Snider 2012', abbrev='ws2012'):
+def snow_rate(radar, swe_ratio, A, B, citation='Wolf and Snider 2012',
+              abbrev='ws2012', valid_max=500):
     """
     Snow rate applied to a pyart.Radar object
 
@@ -75,7 +76,7 @@ def snow_rate(radar, swe_ratio, A, B, citation='Wolf and Snider 2012', abbrev='w
     radar.fields['snow_rate_%s' % abbrev]['standard_name'] = 'snowfall_rate'
     radar.fields['snow_rate_%s' % abbrev]['long_name'] = 'Snowfall rate from Z using %s' % citation
     radar.fields['snow_rate_%s' % abbrev]['valid_min'] = 0
-    radar.fields['snow_rate_%s' % abbrev]['valid_max'] = 500
+    radar.fields['snow_rate_%s' % abbrev]['valid_max'] = valid_max
     radar.fields['snow_rate_%s' % abbrev]['swe_ratio'] = swe_ratio
     radar.fields['snow_rate_%s' % abbrev]['A'] = A
     radar.fields['snow_rate_%s' % abbrev]['B'] = B
@@ -114,7 +115,7 @@ def snr_and_sounding(radar, soundings_dir, override_file=None, verbose=True):
     return z_dict, temp_dict, snr
 
 
-def get_texture(radar, vel_field, nyq=None):
+def get_texture(radar, vel_field, nyq=None, window=4, median_size=(4, 4)):
     """ Calculates velocity texture field. """
     if nyq is None:
         nyq = radar.instrument_parameters['nyquist_velocity']['data'][0]
@@ -127,9 +128,9 @@ def get_texture(radar, vel_field, nyq=None):
         vel = vel.filled(np.nan)
     else:
         vel = radar.fields[vel_field]['data']
-    
-    std_dev = pyart.util.angular_texture_2d(vel, 4, nyq)
-    filtered_data = ndimage.filters.median_filter(std_dev, size=(4, 4))
+
+    std_dev = pyart.util.angular_texture_2d(vel, window, nyq)
+    filtered_data = ndimage.filters.median_filter(std_dev, size=tuple(median_size))
     texture_field = pyart.config.get_metadata('velocity')
     texture_field['data'] = np.ma.masked_where(
         np.isnan(filtered_data), filtered_data)
@@ -141,7 +142,8 @@ def get_texture(radar, vel_field, nyq=None):
 def cum_score_fuzzy_logic(radar, mbfs=None,
                           ret_scores=False,
                           hard_const=None,
-                          verbose=False):
+                          verbose=False,
+                          median_size=(3, 4)):
     if mbfs is None:
         second_trip = {'velocity_texture': [[0, 0, 1.8, 2], 1.0],
                        'cross_correlation_ratio': [[.5, .7, 1, 1], 0.0],
@@ -196,7 +198,7 @@ def cum_score_fuzzy_logic(radar, mbfs=None,
         this_score = this_score.reshape(
             flds[list(flds.keys())[0]]['data'].shape)
         scores.update({key: ndimage.filters.median_filter(
-            this_score, size=[3, 4])})
+            this_score, size=list(median_size))})
 
     if hard_const is not None:
         # hard_const = [[class, field, (v1, v2)], ...]
@@ -242,7 +244,7 @@ def cum_score_fuzzy_logic(radar, mbfs=None,
 def do_my_fuzz(radar, rhv_field, ncp_field,
                tex_start=2.0, tex_end=2.1,
                custom_mbfs=None, custom_hard_constraints=None,
-               verbose=True):  # NEEDS DOCSTRING
+               verbose=True, median_size=(3, 4)):  # NEEDS DOCSTRING
     if verbose:
         print('##')
         print('## CMAC calculation using fuzzy logic:')
@@ -298,14 +300,16 @@ def do_my_fuzz(radar, rhv_field, ncp_field,
         hard_const = custom_hard_constraints
 
     gid_fld, cats = cum_score_fuzzy_logic(radar, mbfs=mbfs, verbose=verbose,
-                                          hard_const=hard_const)
+                                          hard_const=hard_const,
+                                          median_size=median_size)
     rain_val = list(cats).index('rain')
     snow_val = list(cats).index('snow')
     melt_val = list(cats).index('melting')
     return _fix_rain_above_bb(gid_fld, rain_val, melt_val, snow_val), cats
 
 
-def get_melt(radar, melt_cat=None):
+def get_melt(radar, melt_cat=None, fzl_ceiling=5000.0,
+             fzl_replacement=3500.0, fzl_floor=1000.0):
     if melt_cat is None:
         cat_dict = {}
         for pair_str in radar.fields['gate_id']['notes'].split(','):
@@ -325,9 +329,9 @@ def get_melt(radar, melt_cat=None):
         fzl = fzl_sounding
 
     print(fzl)
-    if fzl > 5000:
-        fzl = 3500.0
-    if fzl < 1000:
+    if fzl > fzl_ceiling:
+        fzl = fzl_replacement
+    if fzl < fzl_floor:
         fzl = radar.gate_altitude['data'].min()
     return fzl
 
