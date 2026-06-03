@@ -10,7 +10,7 @@ import netCDF4
 import pyart
 import numpy as np
 
-from cmac import cmac, get_cmac_values, quicklooks, area_coverage
+from cmac import cmac, get_cmac_values, cmac_ppi_quicklooks, cmac_rhi_quicklooks, area_coverage
 
 
 def main():
@@ -24,9 +24,7 @@ def main():
         'sonde_file', type=str,
         help='Sonde file to use for CMAC calculation.')
     parser.add_argument(
-        'config', type=str, help=('Name of the radar dictionary',
-                                  'found in config.py to pull values',
-                                  'for CMAC 2.0 specific to that radar.'))
+        'config', type=str, help=('Name of yaml file to use for configuration'))
     parser.add_argument(
         '-cf', '--clutter_file', type=str, default=None,
         help='clutter file to use for addition of clutter gate id.')
@@ -134,7 +132,10 @@ def main():
               + args.out_radar_directory + '/' + save_name + '.'
               + year_str + month_str + day_str + '.' + hour_str
               + minute_str + second_str + '.nc')
-
+    if cmac_radar.scan_type == 'ppi':
+        quicklooks = cmac_ppi_quicklooks
+    else:
+        quicklooks = cmac_rhi_quicklooks
     quicklooks(cmac_radar, args.config,
                image_directory=args.image_directory,
                dd_lobes=args.dd_lobes)

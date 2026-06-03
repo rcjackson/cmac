@@ -1,7 +1,6 @@
 name: cmac_env
 channels:
   - conda-forge
-  - defaults
 dependencies:
   - python=3.11
   - arm_pyart
