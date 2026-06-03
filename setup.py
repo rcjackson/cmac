@@ -119,7 +119,5 @@ setup(
     packages=find_packages(),
     scripts=['scripts/cmac',
              'scripts/cmac_animation',
-             'scripts/cmac_dask',
-             'scripts/xsapr_cmac_ipcluster',
-             'scripts/xsapr_cmac_pyspark'],
+             'scripts/cmac_dask']
 )
