@@ -340,7 +340,7 @@ def fix_phase_fields(orig_kdp, orig_phidp, rrange, happy_kdp,
 
     orig_kdp['data'][happy_kdp.gate_excluded] = 0.0
     orig_kdp['data'][orig_kdp['data'] > max_kdp] = max_kdp
-    interg = integrate.cumtrapz(orig_kdp['data'], rrange, axis=1)
+    interg = integrate.cumulative_trapezoid(orig_kdp['data'], rrange, axis=1)
     orig_phidp['data'][:, 0:-1] = interg/len(rrange)
     return orig_phidp, orig_kdp
 

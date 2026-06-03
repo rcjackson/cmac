@@ -50,10 +50,11 @@ def main():
         help='Directory to save CMAC radar quicklook images. '
              'Defaults to the user home directory.')
     parser.add_argument(
-        '-ma', '--meta-append', '--meta_append', type=str, default=None,
-        help='Value-key pairs to append to global attributes. If None, '
-             'default metadata is created. Can also be a path to a JSON '
-             'file containing metadata.')
+        '-ma', '--meta-append', '--meta_append', type=str, default='config',
+        help='Source of metadata for the output file. "config" (default) '
+             'uses the per-radar metadata from cmac.default_config / the '
+             'YAML override. Pass a path to a JSON file to use custom '
+             'metadata, or "default" to use the generic global defaults.')
     parser.add_argument(
         '--dd-lobes', action=argparse.BooleanOptionalAction, default=False,
         help='Plot Dual Doppler lobes between i4 and i5.')

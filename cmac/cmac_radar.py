@@ -521,18 +521,17 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
     command_line = ''
     for item in sys.argv:
         command_line = command_line + ' ' + item
-    if meta_append is None:
+    if meta_append is None or meta_append == 'default':
         meta = get_default_metadata(config_file=config_file)
+    elif meta_append.lower().endswith('.json'):
+        with open(meta_append, 'r') as infile:
+            meta = json.load(infile)
+    elif meta_append == 'config':
+        meta = meta_config
     else:
-        if meta_append.lower().endswith('.json'):
-            with open(meta_append, 'r') as infile:
-                meta = json.load(infile)
-        elif meta_append == 'config':
-            meta = meta_config
-        else:
-            raise RuntimeError('Must provide the file name of the json file',
-                               'or say config to use the meta data from',
-                               'config.py')
+        raise RuntimeError(
+            "meta_append must be None, 'config', 'default', or a path "
+            "to a .json file; got %r" % meta_append)
 
     radar.metadata.clear()
     radar.metadata.update(meta)

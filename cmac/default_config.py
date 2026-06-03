@@ -1275,7 +1275,6 @@ _DEFAULT_ZS_RELATIONSHIPS = {"Wolf and Snider (2012)":
 #########################################################################
 
 _DEFAULT_GLOBAL_METADATA = {
-    'site_id': None,
     'data_level': 'sgp',
     'comment': 'This is highly experimental and initial data. '
                + 'There are many known and unknown issues. Please do '
