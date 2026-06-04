@@ -16,5 +16,3 @@ dependencies:
   - matplotlib
   - pyyaml
   - pip
-  - pip:
-    - git+https://github.com/EVS-ATMOS/cmac2.0.git
