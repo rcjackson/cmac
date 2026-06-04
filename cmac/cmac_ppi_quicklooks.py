@@ -164,7 +164,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                          vmin=_range('reflectivity_raw_vmin', -8),
                          vmax=_range('reflectivity_raw_vmax', 64),
                          mask_outside=False,
-                         cmap=pyart.graph.cm_colorblind.HomeyerRainbow,
+                         cmap='HomeyerRainbow',
                          min_lat=min_lat, min_lon=min_lon,
                          max_lat=max_lat, max_lon=max_lon,
                          lat_lines=lal, lon_lines=lol,
@@ -184,7 +184,8 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     cat_dict = {}
     print('##')
     print('## Keys for each gate id are as follows:')
-    for i, pair_str in enumerate(radar.fields['gate_id']['flag_meanings'].split(' ')):
+    for i, pair_str in enumerate(radar.fields['gate_id']['notes'].split(',')):
+        pair_str = pair_str.split(':')[1].strip()
         print('##   ', str(pair_str))
         cat_dict.update({pair_str: i})
     sorted_cats = sorted(cat_dict.items(), key=operator.itemgetter(1))
@@ -226,7 +227,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                          min_lat=min_lat,
                          max_lat=max_lat, lat_lines=lal, lon_lines=lol,
                          resolution='50m',
-                         cmap=pyart.graph.cm_colorblind.HomeyerRainbow,
+                         cmap='HomeyerRainbow',
                          projection=ccrs.PlateCarree())
     if dd_lobes:
         ax[0, 1].contour(grid_lon, grid_lat, bca,
@@ -241,7 +242,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                          resolution='50m', ax=ax[1, 0],
                          title=_generate_title(
                              radar, 'velocity_texture', sweep),
-                         cmap=pyart.graph.cm.NWSRef,
+                         cmap='Spectral_r',
                          projection=ccrs.PlateCarree())
     if dd_lobes:
         ax[1, 0].contour(grid_lon, grid_lat, bca, latlon='True',
@@ -256,7 +257,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                          min_lon=min_lon, max_lon=max_lon,
                          min_lat=min_lat, max_lat=max_lat, lat_lines=lal,
                          lon_lines=lol, resolution='50m', ax=ax[1, 1],
-                         cmap=pyart.graph.cm.Carbone42,
+                         cmap='Carbone42',
                          projection=ccrs.PlateCarree())
     if dd_lobes:
         ax[1, 1].contour(grid_lon, grid_lat, bca,
@@ -284,7 +285,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                          vmin=_range('reflectivity_vmin', -8),
                          vmax=_range('reflectivity_vmax', 40),
                          mask_outside=False,
-                         cmap=pyart.graph.cm_colorblind.HomeyerRainbow,
+                         cmap='HomeyerRainbow',
                          title=_generate_title(
                              radar, 'masked_corrected_reflectivity',
                              sweep), ax=ax,
@@ -316,7 +317,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                          title=_generate_title(
                              radar, 'corrected_reflectivity',
                              sweep),
-                         cmap=pyart.graph.cm_colorblind.HomeyerRainbow,
+                         cmap='HomeyerRainbow',
                          min_lat=min_lat, min_lon=min_lon,
                          max_lat=max_lat, max_lon=max_lon,
                          lat_lines=lal, lon_lines=lol, ax=ax,
@@ -540,7 +541,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                          lat_lines=lal, lon_lines=lol,
                          vmin=_range('filtered_corrected_differential_phase_vmin', 0),
                          vmax=_range('filtered_corrected_differential_phase_vmax', 360),
-                         cmap=pyart.graph.cm.Theodore16,
+                         cmap='Theodore16',
                          projection=ccrs.PlateCarree())
     if dd_lobes:
         ax.contour(grid_lon, grid_lat, bca,
@@ -566,7 +567,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                          lat_lines=lal, lon_lines=lol,
                          vmin=_range('filtered_corrected_specific_diff_phase_vmin', -2),
                          vmax=_range('filtered_corrected_specific_diff_phase_vmax', 10),
-                         cmap=pyart.graph.cm.Theodore16,
+                         cmap='Theodore16',
                          projection=ccrs.PlateCarree())
     if dd_lobes:
         ax.contour(grid_lon, grid_lat, bca,

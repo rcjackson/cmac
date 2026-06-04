@@ -405,7 +405,7 @@ def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
     radar.fields['height_over_iso0'] = copy.deepcopy(radar.fields['height'])
     radar.fields['height_over_iso0']['data'] -= iso0
     radar.fields['height_over_iso0']['long_name'] = 'Height of radar beam over freezing level'
-    phidp_field = field_config['phidp_field']
+    
     phase_proc_gates = pyart.filters.GateFilter(radar)
     phase_proc_gates.exclude_all()
     phase_proc_gates.include_equal('gate_id', 1)

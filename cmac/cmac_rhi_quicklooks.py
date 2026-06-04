@@ -91,7 +91,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
                          vmin=_range('reflectivity_raw_vmin', -8),
                          vmax=_range('reflectivity_raw_vmax', 64),
                          mask_outside=False,
-                         cmap=pyart.graph.cm_colorblind.HomeyerRainbow)
+                         cmap='HomeyerRainbow')
     plt.ylim(ymin, ymax)
 
     fig.savefig(
@@ -104,7 +104,8 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
     cat_dict = {}
     print('##')
     print('## Keys for each gate id are as follows:')
-    for i, pair_str in enumerate(radar.fields['gate_id']['flag_meanings'].split(' ')):
+    for i, pair_str in enumerate(radar.fields['gate_id']['notes'].split(',')):
+        pair_str = pair_str.split(':')[1].strip()
         print('##   ', str(pair_str))
         cat_dict.update({pair_str: i})
     sorted_cats = sorted(cat_dict.items(), key=operator.itemgetter(1))
@@ -135,7 +136,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
                          vmin=_range('reflectivity_vmin', -8),
                          vmax=_range('reflectivity_vmax', 40.0),
                          ax=ax[0, 1],
-                         cmap=pyart.graph.cm_colorblind.HomeyerRainbow)
+                         cmap='HomeyerRainbow')
     ax[1, 0].set_aspect('auto')
     display.plot_rhi('velocity_texture', sweep=sweep,
                      vmin=_range('velocity_texture_vmin', 0),
@@ -143,7 +144,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
                      ax=ax[1, 0],
                      title=_generate_title(
                          radar, 'velocity_texture', sweep),
-                     cmap=pyart.graph.cm.NWSRef)
+                     cmap='Spectral_r')
 
     rhv_field = field_config['cross_correlation_ratio']
     ax[1, 1].set_aspect('auto')
@@ -151,7 +152,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
                      vmin=_range('cross_correlation_ratio_vmin', .5),
                      vmax=_range('cross_correlation_ratio_vmax', 1),
                      ax=ax[1, 1],
-                     cmap=pyart.graph.cm.Carbone42)
+                     cmap='Carbone42')
     for i in range(2):
         for j in range(2):
             ax[i, j].set_ylim([ymin, ymax])
@@ -176,7 +177,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
                      vmin=_range('reflectivity_vmin', -8),
                      vmax=_range('reflectivity_vmax', 40),
                      mask_outside=False,
-                     cmap=pyart.graph.cm_colorblind.HomeyerRainbow,
+                     cmap='HomeyerRainbow',
                      title=_generate_title(
                          radar, 'masked_corrected_reflectivity',
                          sweep), ax=ax,
@@ -199,7 +200,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
                      title=_generate_title(
                          radar, 'corrected_reflectivity',
                          sweep),
-                     cmap=pyart.graph.cm_colorblind.HomeyerRainbow,
+                     cmap='HomeyerRainbow',
                      ax=ax)
     plt.ylim(ymin, ymax)
     fig.savefig(
@@ -306,7 +307,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
     display.plot_rhi('filtered_corrected_differential_phase', sweep=sweep,
                      title=_generate_title(
                          radar, 'filtered_corrected_differential_phase',
-                         sweep), ax=ax, cmap=pyart.graph.cm.Theodore16)
+                         sweep), ax=ax, cmap='Theodore16')
     plt.ylim(ymin, ymax)
     fig.savefig(
         image_directory
@@ -321,7 +322,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
     display.plot_rhi('filtered_corrected_specific_diff_phase', sweep=sweep,
                      title=_generate_title(
                          radar, 'filtered_corrected_specific_diff_phase',
-                         sweep), ax=ax, cmap=pyart.graph.cm.Theodore16)
+                         sweep), ax=ax, cmap='Theodore16')
     plt.ylim(ymin, ymax)
     fig.savefig(
         image_directory

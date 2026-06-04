@@ -56,9 +56,6 @@ def main():
              'YAML override. Pass a path to a JSON file to use custom '
              'metadata, or "default" to use the generic global defaults.')
     parser.add_argument(
-        '--dd-lobes', action=argparse.BooleanOptionalAction, default=False,
-        help='Plot Dual Doppler lobes between i4 and i5.')
-    parser.add_argument(
         '--verbose', action=argparse.BooleanOptionalAction, default=False,
         help='Display debugging output.')
 
@@ -124,12 +121,11 @@ def main():
     print(f'## A CMAC radar object has been created at {out_path}')
 
     quicklooks = (
-        quicklooks_ppi if cmac_radar.scan_type == 'ppi' else quicklooks_rhi)
+        quicklooks_rhi if 'rhi' in cmac_radar.metadata["sweep_mode"] else quicklooks_ppi)
     quicklooks(
         cmac_radar, args.radar_config,
         image_directory=(
             str(args.image_directory) if args.image_directory else None),
-        dd_lobes=args.dd_lobes,
         config_file=str(args.config_file) if args.config_file else None,
     )
 
