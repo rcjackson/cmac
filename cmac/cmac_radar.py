@@ -16,7 +16,7 @@ from .cmac_processing import (
     snow_rate, rain_rate)
 from .config import (get_cmac_values, get_field_names, get_metadata,
                      get_zs_relationships, get_default_metadata)
-from csu_radartools import csu_kdp
+from . import csu_kdp
 
 def cmac(radar, sonde, config, geotiff=None, flip_velocity=False,
          meta_append=None, verbose=True, snow_density=None, snowfall=True,

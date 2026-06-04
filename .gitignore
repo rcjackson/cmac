@@ -3,6 +3,11 @@
 __pycache__
 build
 
+# Cython build artifacts #
+##########################
+cmac/calc_kdp_ray_fir.c
+cmac/*.so
+
 # Report files #
 ################
 IPythonMPI0*

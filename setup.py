@@ -8,8 +8,12 @@ More information can be found at https://www.arm.gov/data/data-sources/cmac-69
 """
 
 
+import os
 import subprocess
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Extension
+
+import numpy as np
+from Cython.Build import cythonize
 
 DOCLINES = __doc__.split("\n")
 
@@ -106,6 +110,16 @@ if not release:
         a.close()
 
 
+extensions = [
+    Extension(
+        'cmac.calc_kdp_ray_fir',
+        sources=['cmac/calc_kdp_ray_fir.pyx'],
+        include_dirs=[np.get_include()],
+        define_macros=[('NPY_NO_DEPRECATED_API', 'NPY_1_7_API_VERSION')],
+    ),
+]
+
+
 setup(
     name=NAME,
     version=VERSION,
@@ -117,6 +131,7 @@ setup(
     license=LICENSE,
     classifiers=CLASSIFIERS,
     packages=find_packages(),
+    ext_modules=cythonize(extensions, language_level='2'),
     scripts=['scripts/cmac',
              'scripts/cmac_animation',
              'scripts/cmac_dask']
