@@ -21,7 +21,7 @@ plt.switch_backend('agg')
 
 
 def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
-                   dd_lobes=True, config_file=None):
+                   dd_lobes=False, config_file=None):
     """
     Quicklooks PPI, images produced with regards to CMAC
 
@@ -59,17 +59,41 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     date_string = datetime.strftime(radar_start_date, '%Y%m%d.%H%M%S')
     combined_name = '.' + save_name + '.' + date_string
 
+    # Soft-coded plot layout / range defaults — every key falls back to
+    # its previous hard-coded value if the YAML config does not provide it.
+    figsize_single = plot_config.get('figsize_single', [12, 8])
+    figsize_panel = plot_config.get('figsize_panel', [15, 10])
+    tick_spacing = plot_config.get('lat_lon_tick_spacing', 0.8)
+    dd_grid_spacing = plot_config.get('dd_lobe_grid_spacing', 0.01)
+    dd_bca_levels = plot_config.get(
+        'dd_lobe_bca_levels', [np.pi / 6, 5 * np.pi / 6])
+    sweep_fallback_nsweeps_lt = plot_config.get(
+        'sweep_fallback_nsweeps_lt', 4)
+    sweep_fallback = plot_config.get('sweep_fallback', 2)
+    cat_colors_cfg = dict(plot_config.get(
+        'cat_colors', {
+            'rain': 'green',
+            'multi_trip': 'red',
+            'no_scatter': 'gray',
+            'snow': 'cyan',
+            'melting': 'yellow',
+            'clutter': 'black',
+            'terrain_blockage': 'brown'}))
+
+    def _range(key, default):
+        return plot_config.get(key, default)
+
     if 'min_lat' in plot_config.keys():
         min_lat = plot_config['min_lat']
     else:
         min_lat = radar.gate_latitude['data'].min() - .1
-    
+
     if 'max_lat' in plot_config.keys():
         max_lat = plot_config['max_lat']
     else:
         max_lat = radar.gate_latitude['data'].max() + .1
 
-    if 'min_lon' in plot_config.keys():     
+    if 'min_lon' in plot_config.keys():
         min_lon = plot_config['min_lon']
     else:
         min_lon = radar.gate_longitude['data'].min() - .1
@@ -85,12 +109,12 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     #min_lon = radar.gate_longitude['data'].min() - .1
 
     # Creating a plot of reflectivity before CMAC.
-    lal = np.arange(min_lat, max_lat, .8)
-    lol = np.arange(min_lon, max_lon, .8)
+    lal = np.arange(min_lat, max_lat, tick_spacing)
+    lol = np.arange(min_lon, max_lon, tick_spacing)
 
-    if dd_lobes:
-        grid_lat = np.arange(min_lat, max_lat, 0.01)
-        grid_lon = np.arange(min_lon, max_lon, 0.01)
+    if dd_lobes and 'facility' in plot_config.keys():
+        grid_lat = np.arange(min_lat, max_lat, dd_grid_spacing)
+        grid_lon = np.arange(min_lon, max_lon, dd_grid_spacing)
 
         facility = plot_config['facility']
         if facility == 'I4':
@@ -108,6 +132,10 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                                  plot_config['site_i6_dms_lat']]
             dms_radar2_coords = [plot_config['site_i4_dms_lon'],
                                  plot_config['site_i4_dms_lat']]
+        else:
+            raise ValueError(
+                f'Facility {facility} not recognized for DD lobe plotting. '
+                'Must be "I4", "I5" or "I6".')
 
         dec_radar1 = [_dms_to_decimal(
             dms_radar1_coords[0][0], dms_radar1_coords[0][1],
@@ -125,27 +153,29 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
         grid_lon, grid_lat = np.meshgrid(grid_lon, grid_lat)
 
     if sweep is None:
-        if radar.nsweeps < 4:
-            sweep = 2
+        if radar.nsweeps < sweep_fallback_nsweeps_lt:
+            sweep = sweep_fallback
         else:
             sweep = plot_config['sweep']
 
     # Plot of the raw reflectivity from the radar.
     display = pyart.graph.RadarMapDisplay(radar)
-    fig, ax = plt.subplots(1, 1, 
-                           subplot_kw=dict(projection=ccrs.PlateCarree()), 
-                           figsize=[12, 8])
+    fig, ax = plt.subplots(1, 1,
+                           subplot_kw=dict(projection=ccrs.PlateCarree()),
+                           figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_ppi_map(field_config['reflectivity'], sweep=sweep, resolution='50m', ax=ax,
-                         vmin=-8, vmax=64, mask_outside=False,
-                         cmap=pyart.graph.cm_colorblind.HomeyerRainbow,
+                         vmin=_range('reflectivity_raw_vmin', -8),
+                         vmax=_range('reflectivity_raw_vmax', 64),
+                         mask_outside=False,
+                         cmap='HomeyerRainbow',
                          min_lat=min_lat, min_lon=min_lon,
                          max_lat=max_lat, max_lon=max_lon,
                          lat_lines=lal, lon_lines=lol,
                          projection=ccrs.PlateCarree())
     if dd_lobes:
         ax.contour(grid_lon, grid_lat, bca,
-                   levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                   levels=dd_bca_levels, linewidths=2,
                    colors='k')
 
     fig.savefig(
@@ -158,28 +188,18 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     cat_dict = {}
     print('##')
     print('## Keys for each gate id are as follows:')
-    for i, pair_str in enumerate(radar.fields['gate_id']['flag_meanings'].split(' ')):
+    for i, pair_str in enumerate(radar.fields['gate_id']['notes'].split(',')):
+        pair_str = pair_str.split(':')[1].strip()
         print('##   ', str(pair_str))
         cat_dict.update({pair_str: i})
     sorted_cats = sorted(cat_dict.items(), key=operator.itemgetter(1))
-    cat_colors = {'rain': 'green',
-                  'multi_trip': 'red',
-                  'no_scatter': 'gray',
-                  'snow': 'cyan',
-                  'melting': 'yellow'}
-    lab_colors = ['red', 'cyan', 'grey', 'green', 'yellow']
-    #if 'ground_clutter' in radar.fields.keys():
-    cat_colors['clutter'] = 'black'
-    lab_colors = np.append(lab_colors, 'black')
-    if 'terrain_blockage' in radar.fields['gate_id']['notes']:
-        cat_colors['terrain_blockage'] = 'brown'
-        lab_colors = np.append(lab_colors, 'brown')
+    cat_colors = dict(cat_colors_cfg)
     lab_colors = [cat_colors[kitty[0]] for kitty in sorted_cats]
     cmap = matplotlib.colors.ListedColormap(lab_colors)
 
     display = pyart.graph.RadarMapDisplay(radar)
     fig, ax = plt.subplots(2, 2,
-              figsize=[15, 10], subplot_kw=dict(projection=ccrs.PlateCarree()))
+              figsize=figsize_panel, subplot_kw=dict(projection=ccrs.PlateCarree()))
     ax[0, 0].set_aspect('auto')
     display.plot_ppi_map('gate_id', sweep=sweep, min_lon=min_lon, ax=ax[0, 0],
                          max_lon=max_lon, min_lat=min_lat,
@@ -189,7 +209,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
 
     if dd_lobes:
         ax[0, 0].contour(grid_lon, grid_lat, bca,
-                        levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                        levels=dd_bca_levels, linewidths=2,
                         colors='k')
 
     cbax = ax[0, 0]
@@ -204,42 +224,48 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     display.cbs[-1].formatter = matplotlib.ticker.FixedFormatter(catty_list)
     display.cbs[-1].update_ticks()
     ax[0, 1].set_aspect('auto')
-    display.plot_ppi_map(field_config['reflectivity'], sweep=sweep, vmin=-8, vmax=40.0, 
+    display.plot_ppi_map(field_config['reflectivity'], sweep=sweep,
+                         vmin=_range('reflectivity_vmin', -8),
+                         vmax=_range('reflectivity_vmax', 40.0),
                          ax=ax[0, 1], min_lon=min_lon, max_lon=max_lon,
                          min_lat=min_lat,
                          max_lat=max_lat, lat_lines=lal, lon_lines=lol,
                          resolution='50m',
-                         cmap=pyart.graph.cm_colorblind.HomeyerRainbow,
+                         cmap='HomeyerRainbow',
                          projection=ccrs.PlateCarree())
     if dd_lobes:
         ax[0, 1].contour(grid_lon, grid_lat, bca,
-                        levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                        levels=dd_bca_levels, linewidths=2,
                         colors='k')
     ax[1, 0].set_aspect('auto')
-    display.plot_ppi_map('velocity_texture', sweep=sweep, vmin=0, vmax=14,
+    display.plot_ppi_map('velocity_texture', sweep=sweep,
+                         vmin=_range('velocity_texture_vmin', 0),
+                         vmax=_range('velocity_texture_vmax', 14),
                          min_lon=min_lon, max_lon=max_lon, min_lat=min_lat,
                          max_lat=max_lat, lat_lines=lal, lon_lines=lol,
                          resolution='50m', ax=ax[1, 0],
                          title=_generate_title(
                              radar, 'velocity_texture', sweep),
-                         cmap=pyart.graph.cm.NWSRef,
+                         cmap='Spectral_r',
                          projection=ccrs.PlateCarree())
     if dd_lobes:
         ax[1, 0].contour(grid_lon, grid_lat, bca, latlon='True',
-                        levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                        levels=dd_bca_levels, linewidths=2,
                          colors='k')
     
     rhv_field = field_config['cross_correlation_ratio']
     ax[1, 1].set_aspect('auto')
-    display.plot_ppi_map(rhv_field, sweep=sweep, vmin=.5,
-                         vmax=1, min_lon=min_lon, max_lon=max_lon,
+    display.plot_ppi_map(rhv_field, sweep=sweep,
+                         vmin=_range('cross_correlation_ratio_vmin', .5),
+                         vmax=_range('cross_correlation_ratio_vmax', 1),
+                         min_lon=min_lon, max_lon=max_lon,
                          min_lat=min_lat, max_lat=max_lat, lat_lines=lal,
                          lon_lines=lol, resolution='50m', ax=ax[1, 1],
-                         cmap=pyart.graph.cm.Carbone42,
+                         cmap='Carbone42',
                          projection=ccrs.PlateCarree())
     if dd_lobes:
         ax[1, 1].contour(grid_lon, grid_lat, bca,
-                        levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                        levels=dd_bca_levels, linewidths=2,
                         colors='k')
     fig.savefig(
         image_directory
@@ -256,12 +282,14 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
 
     display = pyart.graph.RadarMapDisplay(radar)
     fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
-                          figsize=[12, 8])
+                          figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_ppi_map(field_config['reflectivity'],
                          sweep=sweep, resolution='50m',
-                         vmin=-8, vmax=40, mask_outside=False,
-                         cmap=pyart.graph.cm_colorblind.HomeyerRainbow,
+                         vmin=_range('reflectivity_vmin', -8),
+                         vmax=_range('reflectivity_vmax', 40),
+                         mask_outside=False,
+                         cmap='HomeyerRainbow',
                          title=_generate_title(
                              radar, 'masked_corrected_reflectivity',
                              sweep), ax=ax,
@@ -272,7 +300,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                          projection=ccrs.PlateCarree())
     if dd_lobes:
         ax.contour(grid_lon, grid_lat, bca,
-                   levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                   levels=dd_bca_levels, linewidths=2,
                    colors='k')
     fig.savefig(
         image_directory
@@ -284,21 +312,23 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     # Creating a plot with reflectivity corrected with attenuation.
     display = pyart.graph.RadarMapDisplay(radar)
     fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
-                           figsize=[12, 8])
+                           figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_ppi_map('corrected_reflectivity', sweep=sweep,
-                         vmin=0, vmax=40.0, resolution='50m',
+                         vmin=_range('corrected_reflectivity_vmin', 0),
+                         vmax=_range('corrected_reflectivity_vmax', 40.0),
+                         resolution='50m',
                          title=_generate_title(
                              radar, 'corrected_reflectivity',
                              sweep),
-                         cmap=pyart.graph.cm_colorblind.HomeyerRainbow,
+                         cmap='HomeyerRainbow',
                          min_lat=min_lat, min_lon=min_lon,
                          max_lat=max_lat, max_lon=max_lon,
                          lat_lines=lal, lon_lines=lol, ax=ax,
                          projection=ccrs.PlateCarree())
     if dd_lobes:
         ax.contour(grid_lon, grid_lat, bca,
-                   levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                   levels=dd_bca_levels, linewidths=2,
                    colors='k')
     fig.savefig(
         image_directory
@@ -310,7 +340,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     phase_field = field_config['input_phidp_field']
     display = pyart.graph.RadarMapDisplay(radar)
     fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
-                          figsize=[12, 8])
+                          figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_ppi_map(phase_field, sweep=sweep,
                          resolution='50m', ax=ax,
@@ -328,17 +358,19 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     # Creating a plot of specific attenuation.
     display = pyart.graph.RadarMapDisplay(radar)
     fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
-                          figsize=[12, 8])
+                          figsize=figsize_single)
     ax.set_aspect('auto')
-    display.plot_ppi_map('specific_attenuation', sweep=sweep, vmin=0,
-                         vmax=1.0, resolution='50m', ax=ax,
+    display.plot_ppi_map('specific_attenuation', sweep=sweep,
+                         vmin=_range('specific_attenuation_vmin', 0),
+                         vmax=_range('specific_attenuation_vmax', 1.0),
+                         resolution='50m', ax=ax,
                          min_lat=min_lat, min_lon=min_lon,
                          max_lat=max_lat, max_lon=max_lon,
                          lat_lines=lal, lon_lines=lol,
                          projection=ccrs.PlateCarree())
     if dd_lobes:
         ax.contour(grid_lon, grid_lat, bca,
-                    levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                    levels=dd_bca_levels, linewidths=2,
                     colors='k')
     fig.savefig(
         image_directory
@@ -349,7 +381,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     # Creating a plot of corrected differential phase.
     display = pyart.graph.RadarMapDisplay(radar)
     fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
-                          figsize=[12, 8])
+                          figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_ppi_map('corrected_differential_phase', sweep=sweep,
                          title=_generate_title(
@@ -361,7 +393,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                          projection=ccrs.PlateCarree())
     if dd_lobes:
         ax.contour(grid_lon, grid_lat, bca,
-                   levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                   levels=dd_bca_levels, linewidths=2,
                    colors='k')
     fig.savefig(
         image_directory
@@ -372,10 +404,12 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     # Creating a plot of corrected specific differential phase.
     display = pyart.graph.RadarMapDisplay(radar)
     fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
-                          figsize=[12, 8])
+                          figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_ppi_map('corrected_specific_diff_phase', sweep=sweep,
-                         vmin=0, vmax=6, resolution='50m',
+                         vmin=_range('corrected_specific_diff_phase_vmin', 0),
+                         vmax=_range('corrected_specific_diff_phase_vmax', 6),
+                         resolution='50m',
                          title=_generate_title(
                              radar, 'corrected_specific_diff_phase',
                              sweep), ax=ax,
@@ -384,7 +418,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                          projection=ccrs.PlateCarree())
     if dd_lobes:
         ax.contour(grid_lon, grid_lat, bca,
-                   levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                   levels=dd_bca_levels, linewidths=2,
                    colors='k')
     fig.savefig(
         image_directory
@@ -395,16 +429,18 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     # Creating a plot with region dealias corrected velocity.
     display = pyart.graph.RadarMapDisplay(radar)
     fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
-                          figsize=[12, 8])
+                          figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_ppi_map('corrected_velocity', sweep=sweep, resolution='50m',
-                         cmap='balance', vmin=-60, ax=ax,
-                         vmax=60, min_lat=min_lat, min_lon=min_lon,
+                         cmap='balance',
+                         vmin=_range('corrected_velocity_vmin', -60),
+                         vmax=_range('corrected_velocity_vmax', 60),
+                         ax=ax, min_lat=min_lat, min_lon=min_lon,
                          max_lat=max_lat, max_lon=max_lon, lat_lines=lal,
                          lon_lines=lol, projection=ccrs.PlateCarree())
     if dd_lobes:
         ax.contour(grid_lon, grid_lat, bca,
-                   levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                   levels=dd_bca_levels, linewidths=2,
                    colors='k')
     fig.savefig(
         image_directory
@@ -415,15 +451,17 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     # Creating a plot of rain rate A
     display = pyart.graph.RadarMapDisplay(radar)
     fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
-                          figsize=[12, 8])
+                          figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_ppi_map('rain_rate_A', sweep=sweep, resolution='50m',
-                         vmin=0, vmax=120, min_lat=min_lat, min_lon=min_lon,
+                         vmin=_range('rain_rate_vmin', 0),
+                         vmax=_range('rain_rate_vmax', 120),
+                         min_lat=min_lat, min_lon=min_lon,
                          max_lat=max_lat, ax=ax, max_lon=max_lon, lat_lines=lal,
                          lon_lines=lol, projection=ccrs.PlateCarree())
     if dd_lobes:
         ax.contour(grid_lon, grid_lat, bca,
-                   levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                   levels=dd_bca_levels, linewidths=2,
                    colors='k')
     fig.savefig(
         image_directory
@@ -433,15 +471,17 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     # Creating a plot of rain rate Z
     display = pyart.graph.RadarMapDisplay(radar)
     fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
-                          figsize=[12, 8])
+                          figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_ppi_map('rain_rate_Z', sweep=sweep, resolution='50m',
-                         vmin=0, vmax=120, min_lat=min_lat, min_lon=min_lon,
+                         vmin=_range('rain_rate_vmin', 0),
+                         vmax=_range('rain_rate_vmax', 120),
+                         min_lat=min_lat, min_lon=min_lon,
                          max_lat=max_lat, ax=ax, max_lon=max_lon, lat_lines=lal,
                          lon_lines=lol, projection=ccrs.PlateCarree())
     if dd_lobes:
         ax.contour(grid_lon, grid_lat, bca,
-                   levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                   levels=dd_bca_levels, linewidths=2,
                    colors='k')
     fig.savefig(
         image_directory
@@ -451,15 +491,17 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     # Creating a plot of rain rate A
     display = pyart.graph.RadarMapDisplay(radar)
     fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
-                          figsize=[12, 8])
+                          figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_ppi_map('rain_rate_Kdp', sweep=sweep, resolution='50m',
-                         vmin=0, vmax=120, min_lat=min_lat, min_lon=min_lon,
+                         vmin=_range('rain_rate_vmin', 0),
+                         vmax=_range('rain_rate_vmax', 120),
+                         min_lat=min_lat, min_lon=min_lon,
                          max_lat=max_lat, ax=ax, max_lon=max_lon, lat_lines=lal,
                          lon_lines=lol, projection=ccrs.PlateCarree())
     if dd_lobes:
         ax.contour(grid_lon, grid_lat, bca,
-                   levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                   levels=dd_bca_levels, linewidths=2,
                    colors='k')
     fig.savefig(
         image_directory
@@ -471,15 +513,17 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     if 'snow_rate_ws2012' in radar.fields.keys():
         display = pyart.graph.RadarMapDisplay(radar)
         fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
-                              figsize=[12, 8])
+                              figsize=figsize_single)
         ax.set_aspect('auto')
         display.plot_ppi_map('snow_rate_ws2012', sweep=sweep, resolution='50m',
-                             vmin=0, vmax=50, min_lat=min_lat, min_lon=min_lon,
+                             vmin=_range('snow_rate_vmin', 0),
+                             vmax=_range('snow_rate_vmax', 50),
+                             min_lat=min_lat, min_lon=min_lon,
                              max_lat=max_lat, ax=ax, max_lon=max_lon, lat_lines=lal,
                              lon_lines=lol, projection=ccrs.PlateCarree())
         if dd_lobes:
             ax.contour(grid_lon, grid_lat, bca,
-                       levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                       levels=dd_bca_levels, linewidths=2,
                        colors='k')
         fig.savefig(
              image_directory
@@ -490,7 +534,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     # Creating a plot of filtered corrected differential phase.
     display = pyart.graph.RadarMapDisplay(radar)
     fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
-                          figsize=[12, 8])
+                          figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_ppi_map('filtered_corrected_differential_phase', sweep=sweep,
                          title=_generate_title(
@@ -498,12 +542,14 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                              sweep),
                          resolution='50m', min_lat=min_lat, ax=ax,
                          min_lon=min_lon, max_lat=max_lat, max_lon=max_lon,
-                         lat_lines=lal, lon_lines=lol, vmin=0, vmax=360,
-                         cmap=pyart.graph.cm.Theodore16,
+                         lat_lines=lal, lon_lines=lol,
+                         vmin=_range('filtered_corrected_differential_phase_vmin', 0),
+                         vmax=_range('filtered_corrected_differential_phase_vmax', 360),
+                         cmap='Theodore16',
                          projection=ccrs.PlateCarree())
     if dd_lobes:
         ax.contour(grid_lon, grid_lat, bca,
-                    levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                    levels=dd_bca_levels, linewidths=2,
                     colors='k')
     fig.savefig(
         image_directory
@@ -514,7 +560,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     # Creating a plot of filtered corrected specific differential phase.
     display = pyart.graph.RadarMapDisplay(radar)
     fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
-                          figsize=[12, 8])
+                          figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_ppi_map('filtered_corrected_specific_diff_phase', sweep=sweep,
                          title=_generate_title(
@@ -522,12 +568,14 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                              sweep), ax=ax,
                          resolution='50m', min_lat=min_lat,
                          min_lon=min_lon, max_lat=max_lat, max_lon=max_lon,
-                         lat_lines=lal, lon_lines=lol, vmin=-2, vmax=10,
-                         cmap=pyart.graph.cm.Theodore16,
+                         lat_lines=lal, lon_lines=lol,
+                         vmin=_range('filtered_corrected_specific_diff_phase_vmin', -2),
+                         vmax=_range('filtered_corrected_specific_diff_phase_vmax', 10),
+                         cmap='Theodore16',
                          projection=ccrs.PlateCarree())
     if dd_lobes:
         ax.contour(grid_lon, grid_lat, bca,
-                    levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                    levels=dd_bca_levels, linewidths=2,
                     colors='k')
     fig.savefig(
         image_directory
@@ -538,7 +586,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     # Creating a plot of corrected differential phase.
     display = pyart.graph.RadarMapDisplay(radar)
     fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
-                          figsize=[12, 8])
+                          figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_ppi_map('specific_differential_attenuation', sweep=sweep,
                          title=_generate_title(
@@ -550,7 +598,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                          projection=ccrs.PlateCarree())
     if dd_lobes:
         ax.contour(grid_lon, grid_lat, bca,
-                   levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                   levels=dd_bca_levels, linewidths=2,
                    colors='k')
     fig.savefig(
         image_directory
@@ -561,7 +609,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     # Creating a plot of corrected differential phase.
     display = pyart.graph.RadarMapDisplay(radar)
     fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
-                          figsize=[12, 8])
+                          figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_ppi_map('path_integrated_differential_attenuation',
                          sweep=sweep,
@@ -574,7 +622,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                          projection=ccrs.PlateCarree())
     if dd_lobes:
         ax.contour(grid_lon, grid_lat, bca,
-                   levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                   levels=dd_bca_levels, linewidths=2,
                    colors='k')
     fig.savefig(
         image_directory
@@ -585,7 +633,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     # Creating a plot of corrected differential phase.
     display = pyart.graph.RadarMapDisplay(radar)
     fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
-                          figsize=[12, 8])
+                          figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_ppi_map('corrected_differential_reflectivity', sweep=sweep,
                          title=_generate_title(
@@ -597,7 +645,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                          projection=ccrs.PlateCarree())
     if dd_lobes:
         ax.contour(grid_lon, grid_lat, bca,
-                    levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                    levels=dd_bca_levels, linewidths=2,
                     colors='k')
     fig.savefig(
         image_directory
@@ -608,7 +656,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     # Creating a plot with reflectivity corrected with attenuation.
     display = pyart.graph.RadarMapDisplay(radar)
     fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
-                           figsize=[12, 8])
+                           figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_ppi_map(field_config['normalized_coherent_power'], sweep=sweep,
                          resolution='50m',
@@ -621,7 +669,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                          projection=ccrs.PlateCarree())
     if dd_lobes:
         ax.contour(grid_lon, grid_lat, bca,
-                   levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                   levels=dd_bca_levels, linewidths=2,
                    colors='k')
     fig.savefig(
         image_directory
@@ -632,7 +680,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
    # Creating a plot with reflectivity corrected with attenuation.
     display = pyart.graph.RadarMapDisplay(radar)
     fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=ccrs.PlateCarree()),
-                           figsize=[12, 8])
+                           figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_ppi_map('signal_to_noise_ratio', sweep=sweep,
                          resolution='50m',
@@ -645,7 +693,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                          projection=ccrs.PlateCarree())
     if dd_lobes:
         ax.contour(grid_lon, grid_lat, bca,
-                   levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                   levels=dd_bca_levels, linewidths=2,
                    colors='k')
     fig.savefig(
         image_directory

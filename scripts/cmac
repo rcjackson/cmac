@@ -1,152 +1,141 @@
 #!/usr/bin/env python
-""" Creates a radar object with applied CMAC 2.0 and quicklooks pertaining
-to CMAC 2.0. """
+"""Create a radar object with applied CMAC and produce quicklooks."""
 
 import argparse
-import os
-import importlib
+from pathlib import Path
 
 import netCDF4
-import pyart
 import numpy as np
+import pyart
+import xarray as xr
 
-from cmac import cmac, get_cmac_values, quicklooks, area_coverage
+from cmac import (
+    area_coverage,
+    cmac,
+    get_cmac_values,
+    quicklooks_ppi,
+    quicklooks_rhi,
+)
 
 
 def main():
-    """ The main function utilizes the cmac function and quicklooks function
-    to produce a CMAC radar and images pertaining to CMAC. """
     parser = argparse.ArgumentParser(
-        description='Create a radar object with applied CMAC2.0.')
+        description="Create a radar object with applied CMAC.")
     parser.add_argument(
-        'radar_file', type=str, help='Radar file to use for calculations.')
+        'radar_file', type=Path,
+        help='Radar file to use for calculations.')
     parser.add_argument(
-        'sonde_file', type=str,
+        'sonde_file', type=Path,
         help='Sonde file to use for CMAC calculation.')
     parser.add_argument(
-        'config', type=str, help=('Name of the radar dictionary',
-                                  'found in config.py to pull values',
-                                  'for CMAC 2.0 specific to that radar.'))
+        'radar_config', type=str,
+        help=('Name of the radar configuration (e.g. bnf_csapr2_ppi). '
+              'Must be a key in cmac.default_config, or in the YAML file '
+              'passed via --config-file.'))
     parser.add_argument(
-        '-cf', '--clutter_file', type=str, default=None,
-        help='clutter file to use for addition of clutter gate id.')
+        '-c', '--config-file', '--config_file', type=Path, default=None,
+        help='Optional YAML config file whose values override the built-in '
+             'defaults for the given radar_config.')
     parser.add_argument(
-        '-o', '--out_radar_directory', type=str, default=None,
-        help=('Out file path and name to use for the CMAC radar.',
-              'If not provided, radar is written to users home',
-              'directory.'))
+        '-cf', '--clutter-file', '--clutter_file', type=Path, default=None,
+        help='Clutter file to use for addition of clutter gate id.')
     parser.add_argument(
-        '-id', '--image_directory', type=str, default=None,
-        help=('Path to image directory to save CMAC radar images.',
-              'If not provided, images are written to users home',
-              'directory.'))
+        '-o', '--out-radar-directory', '--out_radar_directory',
+        type=Path, default=None,
+        help='Output directory for the CMAC radar file. '
+             'Defaults to the user home directory.')
     parser.add_argument(
-        '-ma', '--meta_append', type=str, default=None,
-        help=('Value key pairs to append to global attributes. If None',
-              'a default metadata will be created. The metadata can also',
-              'be created by stating config and the metadata will be looked',
-              'for in config.py or provide a location to a json file',
-              'containing metadata.'))
-    parser.add_argument('--dd-lobes', dest='dd_lobes', action='store_true',
-                        help='Plot Dual Doppler lobes between i4 and i5.')
-    parser.add_argument('--no-dd-lobes', dest='dd_lobes', action='store_false',
-                        help=('Do not plot Dual Doppler lobes',
-                              'between i4 and i5.'))
-    parser.add_argument('--verbose', dest='verbose', action='store_true',
-                        help='Display debugging output.')
-    parser.add_argument('--no-verbose', dest='verbose', action='store_false',
-                        help='Hide debugging output.')
+        '-id', '--image-directory', '--image_directory',
+        type=Path, default=None,
+        help='Directory to save CMAC radar quicklook images. '
+             'Defaults to the user home directory.')
+    parser.add_argument(
+        '-ma', '--meta-append', '--meta_append', type=str, default='config',
+        help='Source of metadata for the output file. "config" (default) '
+             'uses the per-radar metadata from cmac.default_config / the '
+             'YAML override. Pass a path to a JSON file to use custom '
+             'metadata, or "default" to use the generic global defaults.')
+    parser.add_argument(
+        '--verbose', action=argparse.BooleanOptionalAction, default=False,
+        help='Display debugging output.')
 
-    parser.set_defaults(dd_lobes=False)
-    parser.set_defaults(verbose=False)
     args = parser.parse_args()
 
-    radar = pyart.io.read(args.radar_file)
-    sonde = netCDF4.Dataset(args.sonde_file)
+    radar = pyart.io.read(str(args.radar_file))
+    sonde = xr.open_dataset(str(args.sonde_file))
 
     if args.clutter_file is not None:
-        # Load clutter files.
-        clutter_radar = pyart.io.read(args.clutter_file)
+        if args.verbose:
+            print(f'## Loading clutter file {args.clutter_file}')
+            print('## Reading dictionary...')
+            print('## Adding clutter field..')
+        clutter_radar = pyart.io.read(str(args.clutter_file))
         clutter_field_dict = clutter_radar.fields['ground_clutter'].copy()
-        # For XSAPR data at NSA, sometimes only 3 of 6 sweeps present
-        # Just copy clutter information from bottom sweeps
+        # For XSAPR data at NSA, sometimes only 3 of 6 sweeps are present;
+        # copy clutter information from the bottom sweeps only.
         if clutter_radar.nsweeps > radar.nsweeps:
-            fname = [x for x in radar.fields.keys()][0]
-            clutter_field_dict["data"] = np.zeros_like(
-                    radar.fields[fname]["data"])
-            i = 0
-            for azi_angle in radar.fixed_angle["data"]:
-                ind = np.argwhere(clutter_radar.fixed_angle["data"] == azi_angle)
+            fname = next(iter(radar.fields))
+            clutter_field_dict['data'] = np.zeros_like(
+                radar.fields[fname]['data'])
+            for i, azi_angle in enumerate(radar.fixed_angle['data']):
+                ind = np.argwhere(
+                    clutter_radar.fixed_angle['data'] == azi_angle)
                 if len(ind) > 0:
                     clutter = clutter_radar.get_field(
-                            int(ind), 'ground_clutter')
-                    
+                        int(ind), 'ground_clutter')
                     start, end = radar.get_start_end(i)
-                    clutter_field_dict["data"][
-                            int(start):int(end+1)] = clutter
-                i = i + 1
+                    clutter_field_dict['data'][
+                        int(start):int(end + 1)] = clutter
         radar.add_field(
             'ground_clutter', clutter_field_dict, replace_existing=True)
         del clutter_radar
-    if args.verbose:
-        print('## Loading clutter file ' + args.clutter_file)
-        print('## Reading dictionary...')
-        print('## Adding clutter field..')
 
-    cmac_radar = cmac(radar, sonde, args.config,
-                      meta_append=args.meta_append,
-                      verbose=args.verbose)
+    cmac_radar = cmac(
+        radar, sonde, args.radar_config,
+        meta_append=args.meta_append,
+        verbose=args.verbose,
+        config_file=str(args.config_file) if args.config_file else None,
+    )
     sonde.close()
 
-    radar_start_date = netCDF4.num2date(radar.time['data'][0],
-                                        radar.time['units'])
-    year_str = "%04d" % radar_start_date.year
-    month_str = "%02d" % radar_start_date.month
-    day_str = "%02d" % radar_start_date.day
-    hour_str = "%02d" % radar_start_date.hour
-    minute_str = "%02d" % radar_start_date.minute
-    second_str = "%02d" % radar_start_date.second
+    radar_start_date = netCDF4.num2date(
+        radar.time['data'][0], radar.time['units'],
+        only_use_cftime_datetimes=False, only_use_python_datetimes=True)
+    timestamp = radar_start_date.strftime('%Y%m%d.%H%M%S')
 
     del radar
 
-    cmac_config = get_cmac_values(args.config)
+    cmac_config = get_cmac_values(
+        args.radar_config,
+        config_file=str(args.config_file) if args.config_file else None,
+    )
     save_name = cmac_config['save_name']
 
     ref_10_per, ref_40_per = area_coverage(cmac_radar)
     cmac_radar.metadata['precipitation_coverage_percentage'] = ref_10_per
     cmac_radar.metadata['convection_coverage_percentage'] = ref_40_per
 
-    if args.out_radar_directory is None:
-        pyart.io.write_cfradial(
-            (os.path.expanduser('~') + '/' + save_name + '.'
-             + year_str + month_str + day_str + '.' + hour_str
-             + minute_str + second_str + '.nc'), cmac_radar)
-        print('## A CMAC radar object has been created at '
-              + os.path.expanduser('~') + '/' + save_name + '.'
-              + year_str + month_str + day_str + '.' + hour_str
-              + minute_str + second_str + '.nc')
-    else:
-        pyart.io.write_cfradial(
-            (args.out_radar_directory + '/' + save_name + '.'
-             + year_str + month_str + day_str + '.' + hour_str
-             + minute_str + second_str + '.nc'), cmac_radar)
-        print('## A CMAC radar object has been created at '
-              + args.out_radar_directory + '/' + save_name + '.'
-              + year_str + month_str + day_str + '.' + hour_str
-              + minute_str + second_str + '.nc')
+    out_dir = args.out_radar_directory or Path.home()
+    out_path = out_dir / f'{save_name}.{timestamp}.nc'
+    pyart.io.write_cfradial(str(out_path), cmac_radar)
+    print(f'## A CMAC radar object has been created at {out_path}')
 
-    quicklooks(cmac_radar, args.config,
-               image_directory=args.image_directory,
-               dd_lobes=args.dd_lobes)
+    quicklooks = (
+        quicklooks_rhi if 'rhi' in cmac_radar.sweep_mode["data"][0] else quicklooks_ppi)
+    quicklooks(
+        cmac_radar, args.radar_config,
+        image_directory=(
+            str(args.image_directory) if args.image_directory else None),
+        config_file=str(args.config_file) if args.config_file else None,
+    )
 
     del cmac_radar
+    image_dir = args.image_directory or Path.home()
     print('##')
-    if args.image_directory is None:
-        print('## Quicklooks have been saved in your home directory.')
-    else:
-        print('## Quicklooks have been save to ' + args.image_directory)
+    print(f'## Quicklooks have been saved to {image_dir}')
     print('##')
-    print('## CMAC 2.0 Completed')
+    print('## CMAC Completed')
+
 
 if __name__ == '__main__':
     main()

@@ -56,21 +56,42 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
     date_string = datetime.strftime(radar_start_date, '%Y%m%d.%H%M%S')
     combined_name = '.' + save_name + '.' + date_string
 
-    ymax = 10
-    ymin = 0
+    # Soft-coded layout / range defaults with hard-coded fallbacks.
+    figsize_single = plot_config.get('figsize_single', [12, 8])
+    figsize_panel = plot_config.get('figsize_panel', [15, 10])
+    sweep_fallback_nsweeps_lt = plot_config.get(
+        'sweep_fallback_nsweeps_lt', 4)
+    sweep_fallback = plot_config.get('sweep_fallback', 2)
+    cat_colors_cfg = dict(plot_config.get(
+        'cat_colors', {
+            'rain': 'green',
+            'multi_trip': 'red',
+            'no_scatter': 'gray',
+            'snow': 'cyan',
+            'melting': 'yellow',
+            'clutter': 'black',
+            'terrain_blockage': 'brown'}))
+
+    def _range(key, default):
+        return plot_config.get(key, default)
+
+    ymax = plot_config.get('ymax', 10)
+    ymin = plot_config.get('ymin', 0)
     if sweep is None:
-        if radar.nsweeps < 4:
-            sweep = 2
+        if radar.nsweeps < sweep_fallback_nsweeps_lt:
+            sweep = sweep_fallback
         else:
             sweep = plot_config['sweep']
 
     # Plot of the raw reflectivity from the radar.
     display = pyart.graph.RadarDisplay(radar)
-    fig, ax = plt.subplots(1, 1, figsize=[12, 8])
+    fig, ax = plt.subplots(1, 1, figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_rhi('reflectivity', sweep=sweep, ax=ax,
-                         vmin=-8, vmax=64, mask_outside=False,
-                         cmap=pyart.graph.cm_colorblind.HomeyerRainbow)
+                         vmin=_range('reflectivity_raw_vmin', -8),
+                         vmax=_range('reflectivity_raw_vmax', 64),
+                         mask_outside=False,
+                         cmap='HomeyerRainbow')
     plt.ylim(ymin, ymax)
 
     fig.savefig(
@@ -83,28 +104,18 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
     cat_dict = {}
     print('##')
     print('## Keys for each gate id are as follows:')
-    for i, pair_str in enumerate(radar.fields['gate_id']['flag_meanings'].split(' ')):
+    for i, pair_str in enumerate(radar.fields['gate_id']['notes'].split(',')):
+        pair_str = pair_str.split(':')[1].strip()
         print('##   ', str(pair_str))
         cat_dict.update({pair_str: i})
     sorted_cats = sorted(cat_dict.items(), key=operator.itemgetter(1))
 
-    cat_colors = {'rain': 'green',
-                  'multi_trip': 'red',
-                  'no_scatter': 'gray',
-                  'snow': 'cyan',
-                  'melting': 'yellow'}
-    lab_colors = ['red', 'cyan', 'grey', 'green', 'yellow']
-    if 'ground_clutter' in radar.fields.keys():
-        cat_colors['clutter'] = 'black'
-        lab_colors = np.append(lab_colors, 'black')
-    if 'terrain_blockage' in radar.fields['gate_id']['notes']:
-        cat_colors['terrain_blockage'] = 'brown'
-        lab_colors = np.append(lab_colors, 'brown')
+    cat_colors = dict(cat_colors_cfg)
     lab_colors = [cat_colors[kitty[0]] for kitty in sorted_cats]
     cmap = matplotlib.colors.ListedColormap(lab_colors)
 
     display = pyart.graph.RadarDisplay(radar)
-    fig, ax = plt.subplots(2, 2, figsize=[15, 10])
+    fig, ax = plt.subplots(2, 2, figsize=figsize_panel)
     ax[0, 0].set_aspect('auto')
     display.plot_rhi('gate_id', sweep=sweep, ax=ax[0, 0],
                      cmap=cmap, vmin=0, vmax=6)
@@ -121,21 +132,27 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
     display.cbs[-1].formatter = matplotlib.ticker.FixedFormatter(catty_list)
     display.cbs[-1].update_ticks()
     ax[0, 1].set_aspect('auto')
-    display.plot_rhi('reflectivity', sweep=sweep, vmin=-8, vmax=40.0, 
+    display.plot_rhi('reflectivity', sweep=sweep,
+                         vmin=_range('reflectivity_vmin', -8),
+                         vmax=_range('reflectivity_vmax', 40.0),
                          ax=ax[0, 1],
-                         cmap=pyart.graph.cm_colorblind.HomeyerRainbow)
+                         cmap='HomeyerRainbow')
     ax[1, 0].set_aspect('auto')
-    display.plot_rhi('velocity_texture', sweep=sweep, vmin=0, vmax=14,
+    display.plot_rhi('velocity_texture', sweep=sweep,
+                     vmin=_range('velocity_texture_vmin', 0),
+                     vmax=_range('velocity_texture_vmax', 14),
                      ax=ax[1, 0],
                      title=_generate_title(
                          radar, 'velocity_texture', sweep),
-                     cmap=pyart.graph.cm.NWSRef)
-    
+                     cmap='Spectral_r')
+
     rhv_field = field_config['cross_correlation_ratio']
     ax[1, 1].set_aspect('auto')
-    display.plot_rhi(rhv_field, sweep=sweep, vmin=.5,
-                     vmax=1, ax=ax[1, 1],
-                     cmap=pyart.graph.cm.Carbone42)
+    display.plot_rhi(rhv_field, sweep=sweep,
+                     vmin=_range('cross_correlation_ratio_vmin', .5),
+                     vmax=_range('cross_correlation_ratio_vmax', 1),
+                     ax=ax[1, 1],
+                     cmap='Carbone42')
     for i in range(2):
         for j in range(2):
             ax[i, j].set_ylim([ymin, ymax])
@@ -154,11 +171,13 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
     cmac_gates.include_equal('gate_id', cat_dict['snow'])
 
     display = pyart.graph.RadarDisplay(radar)
-    fig, ax = plt.subplots(1, 1, figsize=[12, 8])
+    fig, ax = plt.subplots(1, 1, figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_rhi('reflectivity', sweep=sweep,
-                     vmin=-8, vmax=40, mask_outside=False,
-                     cmap=pyart.graph.cm_colorblind.HomeyerRainbow,
+                     vmin=_range('reflectivity_vmin', -8),
+                     vmax=_range('reflectivity_vmax', 40),
+                     mask_outside=False,
+                     cmap='HomeyerRainbow',
                      title=_generate_title(
                          radar, 'masked_corrected_reflectivity',
                          sweep), ax=ax,
@@ -173,14 +192,15 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
 
     # Creating a plot with reflectivity corrected with attenuation.
     display = pyart.graph.RadarDisplay(radar)
-    fig, ax = plt.subplots(1, 1, figsize=[12, 8])
+    fig, ax = plt.subplots(1, 1, figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_rhi('corrected_reflectivity', sweep=sweep,
-                     vmin=0, vmax=40.0,
+                     vmin=_range('corrected_reflectivity_vmin', 0),
+                     vmax=_range('corrected_reflectivity_vmax', 40.0),
                      title=_generate_title(
                          radar, 'corrected_reflectivity',
                          sweep),
-                     cmap=pyart.graph.cm_colorblind.HomeyerRainbow,
+                     cmap='HomeyerRainbow',
                      ax=ax)
     plt.ylim(ymin, ymax)
     fig.savefig(
@@ -192,7 +212,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
     # Creating a plot with differential phase.
     phase_field = field_config['input_phidp_field']
     display = pyart.graph.RadarDisplay(radar)
-    fig, ax = plt.subplots(1, 1, figsize=[12, 8])
+    fig, ax = plt.subplots(1, 1, figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_rhi(phase_field, sweep=sweep, ax=ax)
     plt.ylim(ymin, ymax)
@@ -205,10 +225,12 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
 
     # Creating a plot of specific attenuation.
     display = pyart.graph.RadarDisplay(radar)
-    fig, ax = plt.subplots(1, 1, figsize=[12, 8])
+    fig, ax = plt.subplots(1, 1, figsize=figsize_single)
     ax.set_aspect('auto')
-    display.plot_rhi('specific_attenuation', sweep=sweep, vmin=0,
-                     vmax=1.0,  ax=ax)
+    display.plot_rhi('specific_attenuation', sweep=sweep,
+                     vmin=_range('specific_attenuation_vmin', 0),
+                     vmax=_range('specific_attenuation_vmax', 1.0),
+                     ax=ax)
     plt.ylim(ymin, ymax)
     fig.savefig(
         image_directory
@@ -218,7 +240,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
 
     # Creating a plot of corrected differential phase.
     display = pyart.graph.RadarDisplay(radar)
-    fig, ax = plt.subplots(1, 1, figsize=[12, 8])
+    fig, ax = plt.subplots(1, 1, figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_rhi('corrected_differential_phase', sweep=sweep,
                          title=_generate_title(
@@ -233,10 +255,11 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
 
     # Creating a plot of corrected specific differential phase.
     display = pyart.graph.RadarDisplay(radar)
-    fig, ax = plt.subplots(1, 1, figsize=[12, 8])
+    fig, ax = plt.subplots(1, 1, figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_rhi('corrected_specific_diff_phase', sweep=sweep,
-                     vmin=0, vmax=6,
+                     vmin=_range('corrected_specific_diff_phase_vmin', 0),
+                     vmax=_range('corrected_specific_diff_phase_vmax', 6),
                      title=_generate_title(
                          radar, 'corrected_specific_diff_phase',
                          sweep), ax=ax)
@@ -249,11 +272,13 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
 
     # Creating a plot with region dealias corrected velocity.
     display = pyart.graph.RadarDisplay(radar)
-    fig, ax = plt.subplots(1, 1, figsize=[12, 8])
+    fig, ax = plt.subplots(1, 1, figsize=figsize_single)
     ax.set_aspect('auto')
-    display.plot_rhi('corrected_velocity', sweep=sweep, 
-                     cmap='balance', vmin=-60, ax=ax,
-                     vmax=60)
+    display.plot_rhi('corrected_velocity', sweep=sweep,
+                     cmap='balance',
+                     vmin=_range('corrected_velocity_vmin', -60),
+                     vmax=_range('corrected_velocity_vmax', 60),
+                     ax=ax)
     plt.ylim(ymin, ymax)
     fig.savefig(
         image_directory
@@ -263,9 +288,11 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
 
     # Creating a plot of rain rate A
     display = pyart.graph.RadarDisplay(radar)
-    fig, ax = plt.subplots(1, 1, figsize=[12, 8])
+    fig, ax = plt.subplots(1, 1, figsize=figsize_single)
     ax.set_aspect('auto')
-    display.plot_rhi('rain_rate_A', sweep=sweep, vmin=0, vmax=120, ax=ax)
+    display.plot_rhi('rain_rate_A', sweep=sweep,
+                     vmin=_range('rain_rate_vmin', 0),
+                     vmax=_range('rain_rate_vmax', 120), ax=ax)
     plt.ylim(ymin, ymax)
     fig.savefig(
         image_directory
@@ -275,12 +302,12 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
 
     # Creating a plot of filtered corrected differential phase.
     display = pyart.graph.RadarDisplay(radar)
-    fig, ax = plt.subplots(1, 1, figsize=[12, 8])
+    fig, ax = plt.subplots(1, 1, figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_rhi('filtered_corrected_differential_phase', sweep=sweep,
                      title=_generate_title(
                          radar, 'filtered_corrected_differential_phase',
-                         sweep), ax=ax, cmap=pyart.graph.cm.Theodore16)
+                         sweep), ax=ax, cmap='Theodore16')
     plt.ylim(ymin, ymax)
     fig.savefig(
         image_directory
@@ -290,12 +317,12 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
 
     # Creating a plot of filtered corrected specific differential phase.
     display = pyart.graph.RadarDisplay(radar)
-    fig, ax = plt.subplots(1, 1, figsize=[12, 8])
+    fig, ax = plt.subplots(1, 1, figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_rhi('filtered_corrected_specific_diff_phase', sweep=sweep,
                      title=_generate_title(
                          radar, 'filtered_corrected_specific_diff_phase',
-                         sweep), ax=ax, cmap=pyart.graph.cm.Theodore16)
+                         sweep), ax=ax, cmap='Theodore16')
     plt.ylim(ymin, ymax)
     fig.savefig(
         image_directory
@@ -305,7 +332,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
 
     # Creating a plot of corrected differential phase.
     display = pyart.graph.RadarDisplay(radar)
-    fig, ax = plt.subplots(1, 1, figsize=[12, 8])
+    fig, ax = plt.subplots(1, 1, figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_rhi('specific_differential_attenuation', sweep=sweep,
                      title=_generate_title(
@@ -320,7 +347,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
 
     # Creating a plot of corrected differential phase.
     display = pyart.graph.RadarDisplay(radar)
-    fig, ax = plt.subplots(1, 1, figsize=[12, 8])
+    fig, ax = plt.subplots(1, 1, figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_rhi('path_integrated_differential_attenuation',
                      sweep=sweep,
@@ -336,7 +363,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
 
     # Creating a plot of corrected differential phase.
     display = pyart.graph.RadarDisplay(radar)
-    fig, ax = plt.subplots(1, 1, figsize=[12, 8])
+    fig, ax = plt.subplots(1, 1, figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_rhi('corrected_differential_reflectivity', sweep=sweep,
                      title=_generate_title(
@@ -351,7 +378,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
 
     # Creating a plot with reflectivity corrected with attenuation.
     display = pyart.graph.RadarDisplay(radar)
-    fig, ax = plt.subplots(1, 1, figsize=[12, 8])
+    fig, ax = plt.subplots(1, 1, figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_rhi('normalized_coherent_power', sweep=sweep,
                      title=_generate_title(
@@ -366,7 +393,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
 
     # Creating a plot with reflectivity corrected with attenuation.
     display = pyart.graph.RadarDisplay(radar)
-    fig, ax = plt.subplots(1, 1, figsize=[12, 8])
+    fig, ax = plt.subplots(1, 1, figsize=figsize_single)
     ax.set_aspect('auto')
     display.plot_rhi('signal_to_noise_ratio', sweep=sweep,
                      title=_generate_title(

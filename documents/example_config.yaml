@@ -1,4 +1,4 @@
-# Example CMAC 2.0 user configuration.
+# Example CMAC user configuration.
 #
 # Pass this file via the `config_file=` argument on any of:
 #   cmac.get_metadata, cmac.get_field_names, cmac.get_cmac_values,
@@ -11,6 +11,7 @@
 #
 # Sections (all optional): metadata, field_names, cmac_values,
 # plot_values, zs_relationships.
+
 
 # --- Tweak an existing radar key (xsapr_i5_ppi) -----------------------------
 cmac_values:
