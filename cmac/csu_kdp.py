@@ -3,7 +3,7 @@
 Functions to estimate specific differential phase (KDP) using various methods.
 """
 
-from __future__ import division, print_function
+
 import numpy as np
 from numpy import linalg
 from scipy.signal import firwin
