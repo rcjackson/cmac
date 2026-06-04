@@ -131,7 +131,7 @@ setup(
     license=LICENSE,
     classifiers=CLASSIFIERS,
     packages=find_packages(),
-    ext_modules=cythonize(extensions, language_level='2'),
+    ext_modules=cythonize(extensions),
     scripts=['scripts/cmac',
              'scripts/cmac_animation',
              'scripts/cmac_dask']
