@@ -121,7 +121,7 @@ def main():
     print(f'## A CMAC radar object has been created at {out_path}')
 
     quicklooks = (
-        quicklooks_rhi if 'rhi' in cmac_radar.metadata["sweep_mode"] else quicklooks_ppi)
+        quicklooks_rhi if 'rhi' in cmac_radar.sweep_mode["data"][0] else quicklooks_ppi)
     quicklooks(
         cmac_radar, args.radar_config,
         image_directory=(

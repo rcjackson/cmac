@@ -21,7 +21,7 @@ plt.switch_backend('agg')
 
 
 def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
-                   dd_lobes=True, config_file=None):
+                   dd_lobes=False, config_file=None):
     """
     Quicklooks PPI, images produced with regards to CMAC
 
@@ -112,7 +112,7 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
     lal = np.arange(min_lat, max_lat, tick_spacing)
     lol = np.arange(min_lon, max_lon, tick_spacing)
 
-    if dd_lobes:
+    if dd_lobes and 'facility' in plot_config.keys():
         grid_lat = np.arange(min_lat, max_lat, dd_grid_spacing)
         grid_lon = np.arange(min_lon, max_lon, dd_grid_spacing)
 
@@ -132,6 +132,10 @@ def quicklooks_ppi(radar, config, sweep=None, image_directory=None,
                                  plot_config['site_i6_dms_lat']]
             dms_radar2_coords = [plot_config['site_i4_dms_lon'],
                                  plot_config['site_i4_dms_lat']]
+        else:
+            raise ValueError(
+                f'Facility {facility} not recognized for DD lobe plotting. '
+                'Must be "I4", "I5" or "I6".')
 
         dec_radar1 = [_dms_to_decimal(
             dms_radar1_coords[0][0], dms_radar1_coords[0][1],

@@ -64,14 +64,14 @@ field_names:
 
 cmac_values:
   bnf_csapr2_ppi:
-    save_name: bnfcsapr2cmacppiS3.c1
+    save_name: bnfcsapr2cmacS3.c1
     sonde_name: bnfsondewnpnM1.b1
     site_alt: 12
     self_const: 60000.00
     attenuation_a_coef: 0.0633
     c_coef: 0.3
     d_coef: 1.0804
-    beta_coef: 0.64884        # ZDR corrections
+    beta_coef: 0.64884        
     flip_phidp: false
     phidp_flipped:
       - uncorrected_differential_phase
@@ -143,9 +143,10 @@ cmac_values:
 
 plot_values:
   bnf_csapr2_ppi:
-    save_name: bnfcsaprcmacppiS2.c1
+    save_name: bnfcsaprcmacS3.c1
     min_lat: 33.7
     max_lat: 35.65
     min_lon: -88.4
     max_lon: -85.9
     sweep: 0
+
