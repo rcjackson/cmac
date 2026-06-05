@@ -82,9 +82,9 @@ def calc_kdp_ray_fir(
         Py_ssize_t i, j, mloop
 
     # Half window size for calculating stdev phase
-    half_std_win = (std_gate - 1) / 2
+    half_std_win = (std_gate - 1) // 2
     # Half window size for FIR filtering
-    half_fir_win = fir_order / 2
+    half_fir_win = fir_order // 2
 
     #####################################################################
     # Calculate standard deviation of phidp
@@ -156,7 +156,7 @@ def calc_kdp_ray_fir(
                 nadp = 2 * half_fir_win
             if dz[i] < 35.0:
                 nadp = 3 * half_fir_win
-            half_nadp = nadp / 2
+            half_nadp = nadp // 2
             index1 = i - half_nadp
             index2 = i + half_nadp
             N = 0
