@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Functions to estimate specific differential phase (KDP) using various methods.
 """
@@ -9,7 +8,6 @@ from numpy import linalg
 from scipy.signal import firwin
 from warnings import warn
 from .calc_kdp_ray_fir import calc_kdp_ray_fir
-# import time
 
 VERSION = '1.6'
 
