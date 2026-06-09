@@ -6,7 +6,7 @@ import datetime
 import os
 import time
 
-from csu_radartools import csu_kdp
+from . import csu_kdp
 import fnmatch
 import netCDF4
 import numpy as np
