@@ -8,6 +8,12 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "cmac"
+version = "2026.6.11"
+description = "Corrected Moments in Antenna Coordinates"
+
+
 [project.optional-dependencies]
 # Install with `pip install -e .[test]` to get the testing extras.
 # pytest-mpl drives the per-figure baseline image comparisons in
