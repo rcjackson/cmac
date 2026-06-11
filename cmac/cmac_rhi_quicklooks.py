@@ -20,7 +20,7 @@ plt.switch_backend('agg')
 
 
 def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
-                   config_file=None):
+                   config_file=None, return_figs=False):
     """
     Quicklooks RHI, images produced with regards to CMAC
 
@@ -37,13 +37,21 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
     image_directory : str
         File path to the image folder of which to save the CMAC images. If no
         image file path is given, image path defaults to users home directory.
+        Ignored when ``return_figs`` is True.
     config_file : str or None
         Path to a YAML file whose values override the built-in defaults for
         the named ``config`` radar.
+    return_figs : bool, default False
+        When True, return a dict mapping plot name -> matplotlib Figure and
+        DO NOT write PNGs to disk. Used by pytest-mpl regression tests.
+        When False (default), each figure is saved to ``image_directory``
+        and closed, and the function returns None.
 
     """
-    if image_directory is None:
+    if image_directory is None and not return_figs:
         image_directory = os.path.expanduser('~')
+
+    figures = {}
 
     radar_start_date = netCDF4.num2date(
         radar.time['data'][0], radar.time['units'],
@@ -94,10 +102,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
                          cmap='HomeyerRainbow')
     plt.ylim(ymin, ymax)
 
-    fig.savefig(
-        image_directory
-        + '/reflectivity' + combined_name + '.png')
-    del fig, ax
+    figures['reflectivity'] = fig
 
     # Four panel plot of gate_id, velocity_texture, reflectivity, and
     # cross_correlation_ratio.
@@ -157,11 +162,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
         for j in range(2):
             ax[i, j].set_ylim([ymin, ymax])
     fig.tight_layout()
-    fig.savefig(
-        image_directory
-        + '/cmac_four_panel_plot' + combined_name + '.png')
-    plt.close(fig)
-    del fig, ax, display
+    figures['cmac_four_panel_plot'] = fig
 
     # Creating a plot with reflectivity corrected with gate ids.
     cmac_gates = pyart.correct.GateFilter(radar)
@@ -183,11 +184,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
                          sweep), ax=ax,
                      gatefilter=cmac_gates)
     plt.ylim(ymin, ymax)
-    fig.savefig(
-        image_directory
-        + '/masked_corrected_reflectivity' + combined_name + '.png')
-    plt.close(fig)
-    del fig, ax, display
+    figures['masked_corrected_reflectivity'] = fig
 
 
     # Creating a plot with reflectivity corrected with attenuation.
@@ -203,11 +200,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
                      cmap='HomeyerRainbow',
                      ax=ax)
     plt.ylim(ymin, ymax)
-    fig.savefig(
-        image_directory
-        + '/corrected_reflectivity' + combined_name + '.png')
-    plt.close(fig)
-    del fig, ax, display
+    figures['corrected_reflectivity'] = fig
 
     # Creating a plot with differential phase.
     phase_field = field_config['input_phidp_field']
@@ -216,11 +209,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
     ax.set_aspect('auto')
     display.plot_rhi(phase_field, sweep=sweep, ax=ax)
     plt.ylim(ymin, ymax)
-    fig.savefig(
-        image_directory
-        + '/differential_phase' + combined_name + '.png')
-    plt.close(fig)
-    del fig, ax, display
+    figures['differential_phase'] = fig
 
 
     # Creating a plot of specific attenuation.
@@ -232,11 +221,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
                      vmax=_range('specific_attenuation_vmax', 1.0),
                      ax=ax)
     plt.ylim(ymin, ymax)
-    fig.savefig(
-        image_directory
-        + '/specific_attenuation' + combined_name + '.png')
-    plt.close(fig)
-    del fig, ax, display
+    figures['specific_attenuation'] = fig
 
     # Creating a plot of corrected differential phase.
     display = pyart.graph.RadarDisplay(radar)
@@ -247,11 +232,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
                              radar, 'corrected_differential_phase',
                              sweep), ax=ax)
     plt.ylim(ymin, ymax)
-    fig.savefig(
-        image_directory
-        + '/corrected_differential_phase' + combined_name + '.png')
-    plt.close(fig)
-    del fig, ax, display
+    figures['corrected_differential_phase'] = fig
 
     # Creating a plot of corrected specific differential phase.
     display = pyart.graph.RadarDisplay(radar)
@@ -264,11 +245,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
                          radar, 'corrected_specific_diff_phase',
                          sweep), ax=ax)
     plt.ylim(ymin, ymax)
-    fig.savefig(
-        image_directory
-        + '/corrected_specific_diff_phase' + combined_name + '.png')
-    plt.close(fig)
-    del fig, ax, display
+    figures['corrected_specific_diff_phase'] = fig
 
     # Creating a plot with region dealias corrected velocity.
     display = pyart.graph.RadarDisplay(radar)
@@ -280,11 +257,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
                      vmax=_range('corrected_velocity_vmax', 60),
                      ax=ax)
     plt.ylim(ymin, ymax)
-    fig.savefig(
-        image_directory
-        + '/corrected_velocity' + combined_name + '.png')
-    plt.close(fig) 
-    del fig, ax, display
+    figures['corrected_velocity'] = fig
 
     # Creating a plot of rain rate A
     display = pyart.graph.RadarDisplay(radar)
@@ -294,11 +267,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
                      vmin=_range('rain_rate_vmin', 0),
                      vmax=_range('rain_rate_vmax', 120), ax=ax)
     plt.ylim(ymin, ymax)
-    fig.savefig(
-        image_directory
-        + '/rain_rate_A' + combined_name + '.png')
-    plt.close(fig)
-    del fig, ax, display
+    figures['rain_rate_A'] = fig
 
     # Creating a plot of filtered corrected differential phase.
     display = pyart.graph.RadarDisplay(radar)
@@ -309,11 +278,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
                          radar, 'filtered_corrected_differential_phase',
                          sweep), ax=ax, cmap='Theodore16')
     plt.ylim(ymin, ymax)
-    fig.savefig(
-        image_directory
-        + '/filtered_corrected_differential_phase' + combined_name + '.png')
-    plt.close(fig)
-    del fig, ax, display
+    figures['filtered_corrected_differential_phase'] = fig
 
     # Creating a plot of filtered corrected specific differential phase.
     display = pyart.graph.RadarDisplay(radar)
@@ -324,11 +289,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
                          radar, 'filtered_corrected_specific_diff_phase',
                          sweep), ax=ax, cmap='Theodore16')
     plt.ylim(ymin, ymax)
-    fig.savefig(
-        image_directory
-        + '/filtered_corrected_specific_diff_phase' + combined_name + '.png')
-    plt.close(fig)
-    del fig, ax, display
+    figures['filtered_corrected_specific_diff_phase'] = fig
 
     # Creating a plot of corrected differential phase.
     display = pyart.graph.RadarDisplay(radar)
@@ -339,11 +300,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
                          radar, 'specific_differential_attenuation',
                          sweep), ax=ax, gatefilter=cmac_gates)
     plt.ylim(ymin, ymax)
-    fig.savefig(
-        image_directory
-        + '/specific_differential_attenuation' + combined_name + '.png')
-    plt.close(fig)
-    del fig, ax, display
+    figures['specific_differential_attenuation'] = fig
 
     # Creating a plot of corrected differential phase.
     display = pyart.graph.RadarDisplay(radar)
@@ -355,11 +312,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
                          radar, 'path_integrated_differential_attenuation',
                          sweep), ax=ax, gatefilter=cmac_gates)
     plt.ylim(ymin, ymax)
-    fig.savefig(
-        image_directory
-        + '/path_integrated_differential_attenuation' + combined_name + '.png')
-    plt.close(fig)
-    del fig, ax, display
+    figures['path_integrated_differential_attenuation'] = fig
 
     # Creating a plot of corrected differential phase.
     display = pyart.graph.RadarDisplay(radar)
@@ -370,11 +323,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
                          radar, 'corrected_differential_reflectivity',
                          sweep), ax=ax, gatefilter=cmac_gates)
     plt.ylim(ymin, ymax)
-    fig.savefig(
-        image_directory
-        + '/corrected_differential_reflectivity' + combined_name + '.png')
-    plt.close(fig)
-    del fig, ax, display
+    figures['corrected_differential_reflectivity'] = fig
 
     # Creating a plot with reflectivity corrected with attenuation.
     display = pyart.graph.RadarDisplay(radar)
@@ -385,11 +334,7 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
                          radar, 'normalized_coherent_power',
                          sweep), ax=ax)
     plt.ylim(ymin, ymax)
-    fig.savefig(
-        image_directory
-        + '/normalized_coherent_power' + combined_name + '.png')
-    plt.close(fig)
-    del fig, ax, display
+    figures['normalized_coherent_power'] = fig
 
     # Creating a plot with reflectivity corrected with attenuation.
     display = pyart.graph.RadarDisplay(radar)
@@ -400,11 +345,15 @@ def quicklooks_rhi(radar, config, sweep=None, image_directory=None,
                          radar, 'signal_to_noise_ratio',
                          sweep), ax=ax)
     plt.ylim(ymin, ymax)
-    fig.savefig(
-        image_directory
-        + '/signal_to_noise_ratio' + combined_name + '.png')
-    plt.close(fig)
-    del fig, ax, display
+    figures['signal_to_noise_ratio'] = fig
+
+    if return_figs:
+        return figures
+
+    for name, fig in figures.items():
+        fig.savefig(
+            os.path.join(image_directory, name + combined_name + '.png'))
+        plt.close(fig)
 
 
 def _generate_title(radar, field, sweep):
