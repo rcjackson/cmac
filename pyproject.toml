@@ -11,7 +11,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "cmac"
 description = "Corrected Moments in Antenna Coordinates"
-dynamic = ["readme", "version]
+dynamic = ["readme", "version"]
 
 [project.optional-dependencies]
 # Install with `pip install -e .[test]` to get the testing extras.
