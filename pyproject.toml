@@ -13,6 +13,7 @@ name = "cmac"
 version = "2026.6.11"
 description = "Corrected Moments in Antenna Coordinates"
 
+dynamic = ["readme", "version"]
 
 [project.optional-dependencies]
 # Install with `pip install -e .[test]` to get the testing extras.
