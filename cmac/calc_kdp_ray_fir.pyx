@@ -137,7 +137,7 @@ def calc_kdp_ray_fir(
                     # Now do the FIR filtering
                     A = 0.0
                     for j in range(index1, index2 + 1, 1):
-                        A += fir_coeff[j - index1 + 1] * z[j]
+                        A += fir_coeff[j - index1] * z[j]
                     y[i] = A * fir_gain
         for i in range(ngates):
             z[i] = y[i]  # Enables re-filtering of processed phase

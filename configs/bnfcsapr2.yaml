@@ -1,14 +1,20 @@
-# CMAC configuration for the BNF C-SAPR2 PPI radar.
+# CMAC configuration for the BNF C-SAPR2 radar (PPI + RHI scan strategies).
 #
-# This file reproduces the built-in `bnf_csapr2_ppi` defaults from
-# cmac/default_config.py in YAML form. Pass it via the `config_file=`
-# argument on cmac.get_metadata, cmac.get_field_names,
+# This file reproduces the built-in `bnf_csapr2_ppi` and `bnf_csapr2_rhi`
+# defaults from cmac/default_config.py in YAML form. Pass it via the
+# `config_file=` argument on cmac.get_metadata, cmac.get_field_names,
 # cmac.get_cmac_values, cmac.get_plot_values, cmac.get_zs_relationships,
 # or directly to cmac.cmac / cmac.quicklooks_ppi / cmac.quicklooks_rhi /
 # cmac.tall_clutter.
+#
+# Metadata, field_names, and cmac_values are identical for the two scan
+# strategies (same radar, same processing). YAML merge keys (<<:) are
+# used so the RHI entries inherit from PPI and only override the
+# scan-strategy-specific save_name. plot_values diverges more (RHI has
+# no lat/lon map bounds), so it's spelled out separately.
 
 metadata:
-  bnf_csapr2_ppi:
+  bnf_csapr2_ppi: &bnf_csapr2_metadata
     site_id: bnf
     facility_id: s3
     comment: >-
@@ -37,9 +43,11 @@ metadata:
       United States Department of Energy - Atmospheric Radiation
       Measurement (ARM) program
     doi: "10.5439/1668872"
+  bnf_csapr2_rhi:
+    <<: *bnf_csapr2_metadata
 
 field_names:
-  bnf_csapr2_ppi:
+  bnf_csapr2_ppi: &bnf_csapr2_field_names
     # Radar field names
     input_zdr: differential_reflectivity
     reflectivity: reflectivity
@@ -61,17 +69,19 @@ field_names:
     pia_field: path_integrated_attenuation
     phidp_field: corrected_differential_phase
     refl_field: corrected_reflectivity
+  bnf_csapr2_rhi:
+    <<: *bnf_csapr2_field_names
 
 cmac_values:
-  bnf_csapr2_ppi:
-    save_name: bnfcsapr2cmacS3.c1
+  bnf_csapr2_ppi: &bnf_csapr2_cmac_values
+    save_name: bnfcsapr2cmacppiS3.c1
     sonde_name: bnfsondewnpnM1.b1
     site_alt: 12
     self_const: 60000.00
     attenuation_a_coef: 0.0633
     c_coef: 0.3
     d_coef: 1.0804
-    beta_coef: 0.64884        
+    beta_coef: 0.64884
     flip_phidp: false
     phidp_flipped:
       - uncorrected_differential_phase
@@ -140,13 +150,18 @@ cmac_values:
       - [rain,       sounding_temperature, [-1000, -5]]
       - [snow,       sounding_temperature, [3, 100]]
       - [melting,    velocity_texture,     [3, 300]]
+  bnf_csapr2_rhi:
+    <<: *bnf_csapr2_cmac_values
+    save_name: bnfcsapr2cmacrhiS3.c1
 
 plot_values:
   bnf_csapr2_ppi:
-    save_name: bnfcsaprcmacS3.c1
+    save_name: bnfcsaprcmacppiS3.c1
     min_lat: 33.7
     max_lat: 35.65
     min_lon: -88.4
     max_lon: -85.9
     sweep: 0
-
+  bnf_csapr2_rhi:
+    save_name: bnfcsaprcmacrhiS3.c1
+    sweep: 0
