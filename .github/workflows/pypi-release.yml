@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/radclss
+      url: https://pypi.org/p/cmac
     permissions:
       id-token: write  # Required for trusted publishing (OIDC)
 
