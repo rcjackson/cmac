@@ -23,10 +23,10 @@ test = [
     "pytest",
     "pytest-mpl",
     "xarray",
-    "act-atmos",
+    "act-atmos"]
 
 [tool.setuptools]
 # Explicitly register the extension modules to be compiled
 ext-modules = [
-    { name = "my_package.module", sources = ["src/my_package/module.pyx"] }
-]]
+    { name = "cmac.calc_kdp_ray_fir", sources = ["cmac/calc_kdp_ray_fir.pyx"] }
+]
