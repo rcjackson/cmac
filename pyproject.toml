@@ -24,4 +24,9 @@ test = [
     "pytest-mpl",
     "xarray",
     "act-atmos",
-]
+
+[tool.setuptools]
+# Explicitly register the extension modules to be compiled
+ext-modules = [
+    { name = "my_package.module", sources = ["src/my_package/module.pyx"] }
+]]
