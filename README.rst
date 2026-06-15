@@ -10,18 +10,11 @@ rain, snow and second-trip. Some other examples of the corrections done are
 velocity dealiasing and attenuation-corrected reflectivity. Example of fields
 added are rain_rate_A, velocity_texture and filtered_corrected_differential_phase. 
 
-More information can be found at https://www.arm.gov/capabilities/vaps/xsapr-cmac-142
-
-Interactive notebooks on the cloud
-----------------------------------
-.. image:: https://binder.pangeo.io/badge_logo.svg
- :target: https://binder.pangeo.io/v2/gh/EVS-ATMOS/cmac2.0/master
- 
+More information can be found at https://arm.gov/data/science-data-products/vaps/cmac
  
 The `Atmospheric Community Toolkit <https://arm-doe.github.io/ACT>`_ is installed in this binder
 and can be used to download data for CMAC from ARM Data Discovery. For an example on how
 to download ARM datastreams from Data Discovery, click `here <https://arm-doe.github.io/ACT/API/generated/act.discovery.download_data.html#act.discovery.download_data>`_.
-
 
 All ARM files are in the format that is needed by CMAC for processing.
 
